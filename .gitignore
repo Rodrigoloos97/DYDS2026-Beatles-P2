@@ -1,0 +1,18 @@
+# Gradle/Kotlin build output
+.gradle/
+build/
+**/build/
+.kotlin/
+out/
+
+# IntelliJ IDEA
+.idea/
+*.iml
+
+# Local app runtime data
+app_data/*.tmp
+
+# OS/editor noise
+.DS_Store
+Thumbs.db
+
