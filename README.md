@@ -90,6 +90,13 @@ Set-Location "C:\usuarios\tuusuario\ruta\al\proyecto"
 - Tests de integración con MockEngine
 - Paginación remota automática
 
+## Cache de Paises
+
+- En la primera carga, la app consulta Rest Countries y guarda cache local en `app_data/countries_cache.json`.
+- A partir de ahi, listado y busqueda de paises se resuelven desde cache (sin nuevas llamadas a la API de paises).
+- Otros servicios (por ejemplo clima) siguen consultando remoto normalmente.
+- Si quieres refrescar paises desde API, elimina `app_data/countries_cache.json` y vuelve a abrir la app.
+
 ## Flujo de Uso
 
 1. **Home**: Busca y visualiza lista de países desde API remota

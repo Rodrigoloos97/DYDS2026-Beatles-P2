@@ -6,58 +6,68 @@ import io.ktor.client.request.header
 import io.ktor.client.request.parameter
 import io.ktor.client.statement.bodyAsText
 import io.ktor.http.HttpHeaders
+import kotlinx.serialization.encodeToString
 import kotlinx.serialization.json.Json
 import kotlinx.serialization.json.JsonArray
 import kotlinx.serialization.json.JsonElement
 import kotlinx.serialization.json.JsonObject
 import kotlinx.serialization.json.JsonPrimitive
 import kotlinx.serialization.json.decodeFromJsonElement
+import java.io.File
 
 class RestCountriesClient(
     private val httpClient: HttpClient,
     private val apiBaseUrl: String = System.getenv("REST_COUNTRIES_BASE_URL")?.trimEnd('/')
         ?: "https://api.restcountries.com/countries/v5",
-    private val apiKey: String? = System.getenv("REST_COUNTRIES_API_KEY"),
+    // API key hardcodeada: solo se necesita la primera vez para descargar caché
+    // En ejecuciones posteriores, la app funciona offline desde el archivo local
+    private val apiKey: String? = "rc_live_e70d4f2c10a849cd9f6f6569d43a10c3",
+    private val countriesCacheFilePath: String = "app_data/countries_cache.json",
+    private val minValidCacheCountries: Int = 50,
     private val json: Json = Json { ignoreUnknownKeys = true }
 ) {
+    @Volatile
+    private var memoryCountriesCache: List<RemoteCountryDTO>? = null
+
     suspend fun getCountries(): List<RemoteCountryDTO> {
-        validateApiKey()
-
-        val pageSize = 100
-        val collected = mutableListOf<RemoteCountryDTO>()
-        var offset = 0
-
-        while (true) {
-            val page = try {
-                parseCountriesPayload(
-                    httpClient.get(apiBaseUrl) {
-                        applyCommonRequestConfig()
-                        parameter("limit", pageSize)
-                        parameter("offset", offset)
-                    }.bodyAsText()
-                )
-            } catch (e: IllegalStateException) {
-                throw e
-            } catch (e: Exception) {
-                throw IllegalStateException("No se pudo conectar con Rest Countries", e)
-            }
-
-            if (page.isEmpty()) break
-            collected += page
-
-            if (page.size < pageSize) break
-            offset += pageSize
-
-            // Límite de seguridad para evitar loops infinitos por respuestas inesperadas
-            if (offset > 10_000) break
+        memoryCountriesCache?.let {
+            if (isCacheUsable(it)) return it
         }
 
-        return collected.distinctBy { it.cca2 }
+        val fileCached = readCountriesFromDiskCache()
+        if (isCacheUsable(fileCached)) {
+            memoryCountriesCache = fileCached
+            return fileCached
+        }
+
+        validateApiKey()
+        val remoteCountries = fetchCountriesFromApi(query = null)
+        val uniqueCountries = remoteCountries.distinctBy { it.cca2 }
+
+        memoryCountriesCache = uniqueCountries
+        writeCountriesToDiskCache(uniqueCountries)
+
+        return uniqueCountries
+    }
+
+    private fun isCacheUsable(countries: List<RemoteCountryDTO>): Boolean {
+        return countries.size >= minValidCacheCountries
     }
 
     suspend fun searchCountries(name: String): List<RemoteCountryDTO> {
-        validateApiKey()
+        val normalized = name.trim()
+        if (normalized.isEmpty()) {
+            return getCountries()
+        }
 
+        val countries = getCountries()
+        return countries.filter {
+            it.name.common.contains(normalized, ignoreCase = true) ||
+                it.cca2.contains(normalized, ignoreCase = true)
+        }
+    }
+
+    private suspend fun fetchCountriesFromApi(query: String?): List<RemoteCountryDTO> {
         val pageSize = 100
         val collected = mutableListOf<RemoteCountryDTO>()
         var offset = 0
@@ -67,7 +77,9 @@ class RestCountriesClient(
                 parseCountriesPayload(
                     httpClient.get(apiBaseUrl) {
                         applyCommonRequestConfig()
-                        parameter("q", name)
+                        if (!query.isNullOrBlank()) {
+                            parameter("q", query)
+                        }
                         parameter("limit", pageSize)
                         parameter("offset", offset)
                     }.bodyAsText()
@@ -83,10 +95,39 @@ class RestCountriesClient(
 
             if (page.size < pageSize) break
             offset += pageSize
+
+            // Limite de seguridad para evitar loops infinitos por respuestas inesperadas
             if (offset > 10_000) break
         }
 
-        return collected.distinctBy { it.cca2 }
+        return collected
+    }
+
+    private fun readCountriesFromDiskCache(): List<RemoteCountryDTO> {
+        return try {
+            val file = File(countriesCacheFilePath)
+            if (!file.exists()) return emptyList()
+            if (file.length() == 0L) return emptyList()
+
+            val content = file.readText()
+            if (content.isBlank()) return emptyList()
+
+            json.decodeFromString<List<RemoteCountryDTO>>(content)
+        } catch (_: Exception) {
+            emptyList()
+        }
+    }
+
+    private fun writeCountriesToDiskCache(countries: List<RemoteCountryDTO>) {
+        if (countries.isEmpty()) return
+
+        try {
+            val file = File(countriesCacheFilePath)
+            file.parentFile?.mkdirs()
+            file.writeText(json.encodeToString(countries))
+        } catch (_: Exception) {
+            // Cache best-effort: no interrumpir flujo principal por fallas de IO.
+        }
     }
 
     private fun validateApiKey() {
@@ -105,7 +146,7 @@ class RestCountriesClient(
         val root = json.parseToJsonElement(payload)
 
         if (root is JsonArray) {
-            // Compatibilidad con formato legacy (array de países directo)
+            // Compatibilidad con formato legacy (array de paises directo)
             return json.decodeFromJsonElement(root)
         }
 
@@ -302,3 +343,4 @@ class RestCountriesClient(
         return (this[key] as? JsonPrimitive)?.content?.toDoubleOrNull()
     }
 }
+
