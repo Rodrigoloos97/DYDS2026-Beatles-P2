@@ -24,10 +24,16 @@ import io.ktor.client.HttpClient
 import io.ktor.client.engine.cio.CIO
 import io.ktor.client.plugins.contentnegotiation.ContentNegotiation
 import io.ktor.serialization.kotlinx.json.json
+import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.SupervisorJob
+import kotlinx.coroutines.cancel
 import kotlinx.serialization.json.Json
 import javax.swing.SwingUtilities
 
 fun main() {
+    val appScope = CoroutineScope(SupervisorJob() + Dispatchers.Default)
+
     val httpClient = HttpClient(CIO) {
         install(ContentNegotiation) {
             json(Json { ignoreUnknownKeys = true })
@@ -67,10 +73,12 @@ fun main() {
 
     SwingUtilities.invokeLater {
         createAndShowAppWindow(
+            scope = appScope,
             homeViewModel = homeViewModel,
             tripsViewModel = tripsViewModel,
             createDetailViewModel = { DetailViewModel(getCountryDetailsUseCase) },
             onClose = {
+                appScope.cancel()
                 httpClient.close()
             }
         )

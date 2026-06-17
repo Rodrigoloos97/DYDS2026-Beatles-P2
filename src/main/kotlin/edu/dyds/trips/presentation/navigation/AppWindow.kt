@@ -12,9 +12,6 @@ import edu.dyds.trips.presentation.trips.TripOperationUiState
 import edu.dyds.trips.presentation.trips.TripsUiState
 import edu.dyds.trips.presentation.trips.TripsViewModel
 import kotlinx.coroutines.CoroutineScope
-import kotlinx.coroutines.Dispatchers
-import kotlinx.coroutines.SupervisorJob
-import kotlinx.coroutines.cancel
 import kotlinx.coroutines.flow.collectLatest
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.launch
@@ -361,6 +358,7 @@ private class TripRenderer : ListCellRenderer<TripListItem> {
 // ══════════════════════════════════════════════════════════════════════════════
 
 fun createAndShowAppWindow(
+    scope: CoroutineScope,
     homeViewModel: HomeViewModel,
     tripsViewModel: TripsViewModel,
     createDetailViewModel: () -> DetailViewModel,
@@ -388,7 +386,6 @@ fun createAndShowAppWindow(
     val tripsPanel  = JPanel(BorderLayout()).also { it.isOpaque = false }
     cards.add(homePanel, ROUTE_HOME); cards.add(detailPanel, ROUTE_DETAIL); cards.add(tripsPanel, ROUTE_TRIPS)
 
-    val uiScope = CoroutineScope(SupervisorJob() + Dispatchers.Default)
     var activeDetailViewModel: DetailViewModel? = null
 
     val navHome  = NavBtn("\uD83D\uDDFA  Explorar")
@@ -402,13 +399,13 @@ fun createAndShowAppWindow(
 
     navHome.addActionListener  { navigate(ROUTE_HOME) }
     navTrips.addActionListener {
-        configureTripsPanel(tripsPanel, uiScope, tripsViewModel)
+        configureTripsPanel(tripsPanel, scope, tripsViewModel)
         navigate(ROUTE_TRIPS)
     }
 
     configureHomePanel(
         panel     = homePanel,
-        scope     = uiScope,
+        scope     = scope,
         viewModel = homeViewModel,
         onOpenDetail = { code ->
             activeDetailViewModel?.dispose()
@@ -416,7 +413,7 @@ fun createAndShowAppWindow(
             activeDetailViewModel = detailViewModel
             configureDetailPanel(
                 panel = detailPanel,
-                scope = uiScope,
+                scope = scope,
                 countryCode = code,
                 detailViewModel = detailViewModel,
                 onSaveTrip = { trip -> tripsViewModel.saveTrip(trip) },
@@ -435,7 +432,6 @@ fun createAndShowAppWindow(
 
     frame.addWindowListener(object : WindowAdapter() {
         override fun windowClosed(e: WindowEvent?) {
-            uiScope.cancel()
             activeDetailViewModel?.dispose()
             homeViewModel.dispose()
             tripsViewModel.dispose()
@@ -683,69 +679,69 @@ private fun configureDetailPanel(
 
 private fun bindDetail(
     detail: CountryDetail,
-    nameL: JLabel, subL: JLabel, flagL: JLabel,
-    infoRows: JPanel, fxCards: JPanel
+    countryNameL: JLabel,
+    countrySubL: JLabel,
+    flagL: JLabel,
+    infoRows: JPanel,
+    fxCards: JPanel
 ) {
     val c = detail.country
-    nameL.text = c.name; nameL.foreground = T.TEXT
-    subL.text  = c.officialName.let { if (it != c.name) "$it  ·  ${c.region}" else c.region }
+    // Hero
     flagL.text = countryCodeToFlag(c.code)
-
-    infoRows.removeAll()
-    fun row(icon: String, label: String, value: String) {
-        val card = RPanel(T.BG_SURFACE, 10, T.BORDER)
-        card.layout = BorderLayout(8, 0); card.border = EmptyBorder(10, 14, 10, 14)
-        card.maximumSize = Dimension(Int.MAX_VALUE, 50); card.alignmentX = Component.LEFT_ALIGNMENT
-        val valL = lbl(value, T.F_H3, T.TEXT); valL.horizontalAlignment = SwingConstants.RIGHT
-        card.add(lbl("$icon  $label", T.F_SMALL, T.TEXT_MUTED), BorderLayout.WEST)
-        card.add(valL, BorderLayout.EAST)
-        infoRows.add(card); infoRows.add(Box.createVerticalStrut(7))
+    countryNameL.text = "${c.name}  (${c.code})"
+    countryNameL.foreground = T.TEXT
+    val sub = buildString {
+        append(c.region)
+        if (!c.subregion.isNullOrBlank()) append(" › ${c.subregion}")
+        c.capital?.let { append("  •  Capital: $it") }
     }
-    row("\uD83C\uDFDB", "Capital",     c.capital ?: "—")
-    row("\uD83C\uDF0D", "Región",      c.region)
-    row("\uD83D\uDCCD", "Sub-región",  c.subregion ?: "—")
-    row("\uD83D\uDC65", "Población",   "%,d".format(c.population))
-    row("\uD83D\uDD50", "Zona horaria",c.timezones.firstOrNull() ?: "—")
-    row("\uD83D\uDCAC", "Idiomas",     c.languages.values.take(3).joinToString(", ").ifBlank { "—" })
-    row("\uD83D\uDCB1", "Monedas",     c.currencies.values.take(2).joinToString(", ") { "${it.name} (${it.symbol})" }.ifBlank { "—" })
+    countrySubL.text = sub
+
+    // Info rows
+    infoRows.removeAll()
+    fun addRow(icon: String, label: String, value: String) {
+        val row = JPanel(BorderLayout(8, 0)).apply { isOpaque = false; border = EmptyBorder(4, 0, 4, 0) }
+        val keyL = lbl("$icon  $label", T.F_BODY, T.TEXT_SEC)
+        keyL.preferredSize = Dimension(160, keyL.preferredSize.height)
+        val valL = lbl(value, T.F_BODY, T.TEXT)
+        row.add(keyL, BorderLayout.WEST); row.add(valL, BorderLayout.CENTER)
+        infoRows.add(row)
+        infoRows.add(JSeparator().apply { foreground = T.BORDER; maximumSize = Dimension(Int.MAX_VALUE, 1) })
+    }
+    addRow("🌍", "Región", if (!c.subregion.isNullOrBlank()) "${c.region} › ${c.subregion}" else c.region)
+    addRow("🏛", "Capital", c.capital ?: "—")
+    addRow("👥", "Población", "%,d".format(c.population))
+    addRow("🗣", "Idiomas", c.languages.values.joinToString(", ").ifBlank { "—" })
+    addRow("💰", "Monedas", c.currencies.values.joinToString(", ") { "${it.name} (${it.symbol})" }.ifBlank { "—" })
+    addRow("🕐", "Zonas horarias", c.timezones.joinToString(", ").ifBlank { "—" })
+    addRow("📍", "Coordenadas", "%.4f, %.4f".format(c.latitude, c.longitude))
     infoRows.revalidate(); infoRows.repaint()
 
+    // Forecast cards
     fxCards.removeAll()
     if (detail.weatherForecast.isEmpty()) {
-        val noData = lbl("Sin pronóstico disponible", T.F_BODY, T.TEXT_MUTED)
-        noData.border = EmptyBorder(20, 0, 0, 0); noData.alignmentX = Component.LEFT_ALIGNMENT
-        fxCards.add(noData)
+        fxCards.add(lbl("Sin pronóstico disponible", T.F_BODY, T.TEXT_MUTED))
     } else {
         detail.weatherForecast.take(7).forEach { day ->
-            fxCards.add(buildWeatherCard(day)); fxCards.add(Box.createVerticalStrut(8))
+            val card = RPanel(T.BG_CARD, 10, T.BORDER)
+            card.layout = BorderLayout(10, 0)
+            card.border = EmptyBorder(8, 12, 8, 12)
+            card.maximumSize = Dimension(Int.MAX_VALUE, 52)
+            val icon = T.weatherIcon(day.weatherCode)
+            val iconL = lbl(icon, T.F_H2, T.CYAN)
+            iconL.preferredSize = Dimension(36, iconL.preferredSize.height)
+            val dateL = lbl(day.date, T.F_BODY, T.TEXT_SEC)
+            dateL.preferredSize = Dimension(110, dateL.preferredSize.height)
+            val descL = lbl(day.description, T.F_BODY, T.TEXT)
+            val tempL = lbl("↓${day.tempMinCelsius}° ↑${day.tempMaxCelsius}°", T.F_H3, T.CYAN_LIGHT)
+            tempL.horizontalAlignment = SwingConstants.RIGHT
+            val center = JPanel(BorderLayout(4, 0)).apply { isOpaque = false; add(dateL, BorderLayout.WEST); add(descL, BorderLayout.CENTER) }
+            card.add(iconL, BorderLayout.WEST); card.add(center, BorderLayout.CENTER); card.add(tempL, BorderLayout.EAST)
+            fxCards.add(card)
+            fxCards.add(Box.createVerticalStrut(6))
         }
     }
     fxCards.revalidate(); fxCards.repaint()
-}
-
-private fun buildWeatherCard(day: WeatherForecast): JPanel {
-    val card = RPanel(T.BG_SURFACE, 12, T.BORDER)
-    card.layout = BorderLayout(14, 0); card.border = EmptyBorder(12, 16, 12, 16)
-    card.maximumSize = Dimension(Int.MAX_VALUE, 74); card.alignmentX = Component.LEFT_ALIGNMENT
-
-    val left = JPanel().apply { layout = BoxLayout(this, BoxLayout.Y_AXIS); isOpaque = false }
-    val iconL = lbl(T.weatherIcon(day.weatherCode), Font("Segoe UI", Font.PLAIN, 26), T.TEXT)
-    iconL.alignmentX = Component.CENTER_ALIGNMENT
-    val dateL = lbl(day.date.substring(5), T.F_TINY, T.TEXT_MUTED)
-    dateL.alignmentX = Component.CENTER_ALIGNMENT
-    left.add(iconL); left.add(Box.createVerticalStrut(2)); left.add(dateL)
-
-    val descL = lbl(day.description, T.F_BODY, T.TEXT_SEC)
-
-    val right = JPanel().apply { layout = BoxLayout(this, BoxLayout.Y_AXIS); isOpaque = false }
-    val tempL = lbl("${day.tempMinCelsius.toInt()}° / ${day.tempMaxCelsius.toInt()}°C", T.F_H2, T.TEXT)
-    tempL.alignmentX = Component.RIGHT_ALIGNMENT
-    val windL = lbl("\uD83D\uDCA8 ${day.windSpeedKmh.toInt()} km/h   \uD83C\uDF27 ${day.precipitationMm} mm", T.F_TINY, T.TEXT_MUTED)
-    windL.alignmentX = Component.RIGHT_ALIGNMENT
-    right.add(tempL); right.add(Box.createVerticalStrut(4)); right.add(windL)
-
-    card.add(left, BorderLayout.WEST); card.add(descL, BorderLayout.CENTER); card.add(right, BorderLayout.EAST)
-    return card
 }
 
 // ══════════════════════════════════════════════════════════════════════════════

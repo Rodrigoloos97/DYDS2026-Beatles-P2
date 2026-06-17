@@ -1,14 +1,13 @@
 package edu.dyds.trips.presentation.trips
 
 import kotlinx.coroutines.CoroutineScope
-import kotlinx.coroutines.Dispatchers
-import kotlinx.coroutines.SupervisorJob
-import kotlinx.coroutines.cancel
 import kotlinx.coroutines.flow.collectLatest
 import kotlinx.coroutines.launch
 import java.awt.BorderLayout
 import java.awt.Dimension
 import java.awt.FlowLayout
+import java.awt.event.WindowAdapter
+import java.awt.event.WindowEvent
 import javax.swing.DefaultListModel
 import javax.swing.JButton
 import javax.swing.JFrame
@@ -18,7 +17,10 @@ import javax.swing.JPanel
 import javax.swing.JScrollPane
 import javax.swing.SwingUtilities
 
-fun createAndShowTripsScreen(viewModel: TripsViewModel) {
+fun createAndShowTripsScreen(
+    scope: CoroutineScope,
+    viewModel: TripsViewModel
+) {
     val frame = JFrame("Mis viajes")
     frame.defaultCloseOperation = JFrame.DISPOSE_ON_CLOSE
     frame.minimumSize = Dimension(760, 440)
@@ -40,7 +42,6 @@ fun createAndShowTripsScreen(viewModel: TripsViewModel) {
 
     val idsByIndex = mutableListOf<String>()
 
-    val scope = CoroutineScope(SupervisorJob() + Dispatchers.Default)
     scope.launch {
         viewModel.uiState.collectLatest { state ->
             SwingUtilities.invokeLater {
@@ -92,9 +93,9 @@ fun createAndShowTripsScreen(viewModel: TripsViewModel) {
         }
     }
 
-    frame.addWindowListener(object : java.awt.event.WindowAdapter() {
-        override fun windowClosed(e: java.awt.event.WindowEvent?) {
-            scope.cancel()
+    frame.addWindowListener(object : WindowAdapter() {
+        override fun windowClosed(e: WindowEvent?) {
+            viewModel.dispose()
         }
     })
 
@@ -103,4 +104,3 @@ fun createAndShowTripsScreen(viewModel: TripsViewModel) {
 
     viewModel.loadTrips()
 }
-

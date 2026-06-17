@@ -1,9 +1,6 @@
 package edu.dyds.trips.presentation.home
 
 import kotlinx.coroutines.CoroutineScope
-import kotlinx.coroutines.Dispatchers
-import kotlinx.coroutines.SupervisorJob
-import kotlinx.coroutines.cancel
 import kotlinx.coroutines.flow.collectLatest
 import kotlinx.coroutines.launch
 import java.awt.BorderLayout
@@ -23,6 +20,7 @@ import javax.swing.JTextField
 import javax.swing.SwingUtilities
 
 fun createAndShowHomeScreen(
+    scope: CoroutineScope,
     viewModel: HomeViewModel,
     onOpenDetail: (String) -> Unit,
     onOpenTrips: () -> Unit,
@@ -55,8 +53,7 @@ fun createAndShowHomeScreen(
     frame.add(JScrollPane(countriesList), BorderLayout.CENTER)
     frame.add(statusLabel, BorderLayout.SOUTH)
 
-    val uiScope = CoroutineScope(SupervisorJob() + Dispatchers.Default)
-    uiScope.launch {
+    scope.launch {
         viewModel.uiState.collectLatest { state ->
             SwingUtilities.invokeLater {
                 when (state) {
@@ -110,7 +107,6 @@ fun createAndShowHomeScreen(
 
     frame.addWindowListener(object : WindowAdapter() {
         override fun windowClosed(e: WindowEvent?) {
-            uiScope.cancel()
             viewModel.dispose()
             onClose()
         }
