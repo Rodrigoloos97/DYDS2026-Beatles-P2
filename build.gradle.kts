@@ -29,7 +29,8 @@ dependencies {
 }
 
 kotlin {
-    jvmToolchain(21)
+    // Usar Java 17 disponible localmente (se detectó JDK 17 en el sistema)
+    jvmToolchain(17)
 }
 
 sourceSets {

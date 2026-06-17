@@ -1,0 +1,133 @@
+[
+  {
+    "cca2": "AR",
+    "name": {
+      "common": "Argentina",
+      "official": "Argentine Republic"
+    },
+    "region": "Americas",
+    "subregion": "South America",
+    "capital": ["Buenos Aires"],
+    "currencies": {
+      "ARS": {
+        "name": "Argentine peso",
+        "symbol": "$"
+      }
+    },
+    "languages": {
+      "spa": "Spanish"
+    },
+    "timezones": ["UTC-03:00"],
+    "latlng": [-34.0, -64.0],
+    "flags": {
+      "png": "https://flagcdn.com/w320/ar.png",
+      "svg": "https://flagcdn.com/ar.svg"
+    },
+    "population": 46233344
+  },
+  {
+    "cca2": "BR",
+    "name": {
+      "common": "Brazil",
+      "official": "Federative Republic of Brazil"
+    },
+    "region": "Americas",
+    "subregion": "South America",
+    "capital": ["Brasília"],
+    "currencies": {
+      "BRL": {
+        "name": "Brazilian real",
+        "symbol": "R$"
+      }
+    },
+    "languages": {
+      "por": "Portuguese"
+    },
+    "timezones": ["UTC-02:00", "UTC-03:00", "UTC-04:00", "UTC-05:00"],
+    "latlng": [-10.0, -55.0],
+    "flags": {
+      "png": "https://flagcdn.com/w320/br.png",
+      "svg": "https://flagcdn.com/br.svg"
+    },
+    "population": 215313498
+  },
+  {
+    "cca2": "US",
+    "name": {
+      "common": "United States",
+      "official": "United States of America"
+    },
+    "region": "Americas",
+    "subregion": "North America",
+    "capital": ["Washington, D.C."],
+    "currencies": {
+      "USD": {
+        "name": "United States dollar",
+        "symbol": "$"
+      }
+    },
+    "languages": {
+      "eng": "English"
+    },
+    "timezones": ["UTC-12:00", "UTC-11:00", "UTC-10:00", "UTC-09:00", "UTC-08:00", "UTC-07:00", "UTC-06:00", "UTC-05:00"],
+    "latlng": [38.0, -97.0],
+    "flags": {
+      "png": "https://flagcdn.com/w320/us.png",
+      "svg": "https://flagcdn.com/us.svg"
+    },
+    "population": 328239523
+  },
+  {
+    "cca2": "ES",
+    "name": {
+      "common": "Spain",
+      "official": "Kingdom of Spain"
+    },
+    "region": "Europe",
+    "subregion": "Southern Europe",
+    "capital": ["Madrid"],
+    "currencies": {
+      "EUR": {
+        "name": "Euro",
+        "symbol": "€"
+      }
+    },
+    "languages": {
+      "spa": "Spanish"
+    },
+    "timezones": ["UTC+00:00", "UTC+01:00"],
+    "latlng": [40.0, -3.0],
+    "flags": {
+      "png": "https://flagcdn.com/w320/es.png",
+      "svg": "https://flagcdn.com/es.svg"
+    },
+    "population": 47615034
+  },
+  {
+    "cca2": "JP",
+    "name": {
+      "common": "Japan",
+      "official": "Japan"
+    },
+    "region": "Asia",
+    "subregion": "Eastern Asia",
+    "capital": ["Tokyo"],
+    "currencies": {
+      "JPY": {
+        "name": "Japanese yen",
+        "symbol": "¥"
+      }
+    },
+    "languages": {
+      "jpn": "Japanese"
+    },
+    "timezones": ["UTC+09:00"],
+    "latlng": [36.0, 138.0],
+    "flags": {
+      "png": "https://flagcdn.com/w320/jp.png",
+      "svg": "https://flagcdn.com/jp.svg"
+    },
+    "population": 125124989
+  }
+]
+
