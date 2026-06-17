@@ -8,4 +8,3 @@ sealed interface HomeUiState {
     data class Success(val countries: List<Country>) : HomeUiState
     data class Error(val message: String) : HomeUiState
 }
-

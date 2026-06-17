@@ -2,189 +2,141 @@ package edu.dyds.trips.data.remote.countries
 
 import io.ktor.client.HttpClient
 import io.ktor.client.request.get
+import io.ktor.client.request.header
 import io.ktor.client.request.parameter
 import io.ktor.client.statement.bodyAsText
+import io.ktor.http.HttpHeaders
 import kotlinx.serialization.json.Json
 import kotlinx.serialization.json.JsonArray
+import kotlinx.serialization.json.JsonElement
 import kotlinx.serialization.json.JsonObject
+import kotlinx.serialization.json.JsonPrimitive
 import kotlinx.serialization.json.decodeFromJsonElement
-import java.io.File
 
 class RestCountriesClient(
     private val httpClient: HttpClient,
+    private val apiBaseUrl: String = System.getenv("REST_COUNTRIES_BASE_URL")?.trimEnd('/')
+        ?: "https://api.restcountries.com/countries/v5",
+    private val apiKey: String? = System.getenv("REST_COUNTRIES_API_KEY"),
     private val json: Json = Json { ignoreUnknownKeys = true }
 ) {
-    suspend fun getCountries(): List<RemoteCountryDTO> = try {
-        parseCountriesPayload(
-            httpClient.get("https://restcountries.com/v3.1/all") {
-                parameter(
-                    "fields",
-                    "cca2,name,region,subregion,capital,currencies,languages,timezones,latlng,flags,population"
+    suspend fun getCountries(): List<RemoteCountryDTO> {
+        validateApiKey()
+
+        val pageSize = 100
+        val collected = mutableListOf<RemoteCountryDTO>()
+        var offset = 0
+
+        while (true) {
+            val page = try {
+                parseCountriesPayload(
+                    httpClient.get(apiBaseUrl) {
+                        applyCommonRequestConfig()
+                        parameter("limit", pageSize)
+                        parameter("offset", offset)
+                    }.bodyAsText()
                 )
-            }.bodyAsText()
-        )
-    } catch (e: IllegalStateException) {
-        // Error de parseo/validación de API (malo request del servidor) → relanzar
-        throw e
-    } catch (e: Exception) {
-        // Error de conexión/red → cargar desde datos locales
-        getLocalCountries()
-    }
-
-    suspend fun searchCountries(name: String): List<RemoteCountryDTO> = try {
-        parseCountriesPayload(
-            httpClient.get("https://restcountries.com/v3.1/name/$name") {
-                parameter(
-                    "fields",
-                    "cca2,name,region,subregion,capital,currencies,languages,timezones,latlng,flags,population"
-                )
-            }.bodyAsText()
-        )
-    } catch (e: IllegalStateException) {
-        // Error de parseo/validación de API → relanzar
-        throw e
-    } catch (e: Exception) {
-        // Error de conexión → buscar en datos locales
-        getLocalCountries().filter {
-            it.name.common.contains(name, ignoreCase = true) ||
-            it.cca2.contains(name, ignoreCase = true)
-        }
-    }
-
-    private fun getLocalCountries(): List<RemoteCountryDTO> {
-        // Intentar leer del archivo primero
-        val fromFile = loadLocalCountriesFromFile()
-        if (fromFile.isNotEmpty()) {
-            return fromFile
-        }
-        // Fallback: datos embebidos directamente en código
-        return getEmbeddedCountries()
-    }
-
-    private fun loadLocalCountriesFromFile(): List<RemoteCountryDTO> {
-        return try {
-            // Intentar cargar desde múltiples rutas posibles
-            val possiblePaths = listOf(
-                "app_data/countries_local.json",
-                "composeApp/app_data/countries_local.json",
-                "${System.getProperty("user.dir")}/app_data/countries_local.json",
-                "${System.getProperty("user.dir")}/composeApp/app_data/countries_local.json"
-            )
-
-            val file = possiblePaths.map { File(it) }.firstOrNull { it.exists() }
-
-            if (file != null) {
-                val jsonContent = file.readText()
-                json.decodeFromJsonElement(json.parseToJsonElement(jsonContent))
-            } else {
-                emptyList()
+            } catch (e: IllegalStateException) {
+                throw e
+            } catch (e: Exception) {
+                throw IllegalStateException("No se pudo conectar con Rest Countries", e)
             }
-        } catch (e: Exception) {
-            emptyList()
+
+            if (page.isEmpty()) break
+            collected += page
+
+            if (page.size < pageSize) break
+            offset += pageSize
+
+            // Límite de seguridad para evitar loops infinitos por respuestas inesperadas
+            if (offset > 10_000) break
+        }
+
+        return collected.distinctBy { it.cca2 }
+    }
+
+    suspend fun searchCountries(name: String): List<RemoteCountryDTO> {
+        validateApiKey()
+
+        val pageSize = 100
+        val collected = mutableListOf<RemoteCountryDTO>()
+        var offset = 0
+
+        while (true) {
+            val page = try {
+                parseCountriesPayload(
+                    httpClient.get(apiBaseUrl) {
+                        applyCommonRequestConfig()
+                        parameter("q", name)
+                        parameter("limit", pageSize)
+                        parameter("offset", offset)
+                    }.bodyAsText()
+                )
+            } catch (e: IllegalStateException) {
+                throw e
+            } catch (e: Exception) {
+                throw IllegalStateException("No se pudo conectar con Rest Countries", e)
+            }
+
+            if (page.isEmpty()) break
+            collected += page
+
+            if (page.size < pageSize) break
+            offset += pageSize
+            if (offset > 10_000) break
+        }
+
+        return collected.distinctBy { it.cca2 }
+    }
+
+    private fun validateApiKey() {
+        if (apiKey.isNullOrBlank()) {
+            throw IllegalStateException(
+                "REST_COUNTRIES_API_KEY no configurada. Configura la variable de entorno para usar la API remota."
+            )
         }
     }
 
-    private fun getEmbeddedCountries(): List<RemoteCountryDTO> {
-        return listOf(
-            RemoteCountryDTO(
-                cca2 = "AR",
-                name = RemoteCountryNameDTO("Argentina", "Argentine Republic"),
-                region = "Americas",
-                subregion = "South America",
-                capital = listOf("Buenos Aires"),
-                currencies = mapOf("ARS" to RemoteCurrencyDTO("Argentine peso", "$")),
-                languages = mapOf("spa" to "Spanish"),
-                timezones = listOf("UTC-03:00"),
-                latlng = listOf(-34.0, -64.0),
-                flags = RemoteFlagsDTO("https://flagcdn.com/w320/ar.png", "https://flagcdn.com/ar.svg"),
-                population = 46233344
-            ),
-            RemoteCountryDTO(
-                cca2 = "BR",
-                name = RemoteCountryNameDTO("Brazil", "Federative Republic of Brazil"),
-                region = "Americas",
-                subregion = "South America",
-                capital = listOf("Brasilia"),
-                currencies = mapOf("BRL" to RemoteCurrencyDTO("Brazilian real", "R$")),
-                languages = mapOf("por" to "Portuguese"),
-                timezones = listOf("UTC-02:00", "UTC-03:00", "UTC-04:00", "UTC-05:00"),
-                latlng = listOf(-10.0, -55.0),
-                flags = RemoteFlagsDTO("https://flagcdn.com/w320/br.png", "https://flagcdn.com/br.svg"),
-                population = 215313498
-            ),
-            RemoteCountryDTO(
-                cca2 = "US",
-                name = RemoteCountryNameDTO("United States", "United States of America"),
-                region = "Americas",
-                subregion = "North America",
-                capital = listOf("Washington"),
-                currencies = mapOf("USD" to RemoteCurrencyDTO("United States dollar", "$")),
-                languages = mapOf("eng" to "English"),
-                timezones = listOf("UTC-08:00", "UTC-05:00"),
-                latlng = listOf(38.0, -97.0),
-                flags = RemoteFlagsDTO("https://flagcdn.com/w320/us.png", "https://flagcdn.com/us.svg"),
-                population = 328239523
-            ),
-            RemoteCountryDTO(
-                cca2 = "ES",
-                name = RemoteCountryNameDTO("Spain", "Kingdom of Spain"),
-                region = "Europe",
-                subregion = "Southern Europe",
-                capital = listOf("Madrid"),
-                currencies = mapOf("EUR" to RemoteCurrencyDTO("Euro", "EUR")),
-                languages = mapOf("spa" to "Spanish"),
-                timezones = listOf("UTC+00:00", "UTC+01:00"),
-                latlng = listOf(40.0, -3.0),
-                flags = RemoteFlagsDTO("https://flagcdn.com/w320/es.png", "https://flagcdn.com/es.svg"),
-                population = 47615034
-            ),
-            RemoteCountryDTO(
-                cca2 = "JP",
-                name = RemoteCountryNameDTO("Japan", "Japan"),
-                region = "Asia",
-                subregion = "Eastern Asia",
-                capital = listOf("Tokyo"),
-                currencies = mapOf("JPY" to RemoteCurrencyDTO("Japanese yen", "JPY")),
-                languages = mapOf("jpn" to "Japanese"),
-                timezones = listOf("UTC+09:00"),
-                latlng = listOf(36.0, 138.0),
-                flags = RemoteFlagsDTO("https://flagcdn.com/w320/jp.png", "https://flagcdn.com/jp.svg"),
-                population = 125124989
-            )
-        )
+    private fun io.ktor.client.request.HttpRequestBuilder.applyCommonRequestConfig() {
+        header(HttpHeaders.Authorization, "Bearer $apiKey")
     }
 
     private fun parseCountriesPayload(payload: String): List<RemoteCountryDTO> {
         val root = json.parseToJsonElement(payload)
 
         if (root is JsonArray) {
+            // Compatibilidad con formato legacy (array de países directo)
             return json.decodeFromJsonElement(root)
         }
 
         if (root is JsonObject) {
-            // Manejar respuestas de error con diferentes estructuras.
-            // Ejemplos:
-            // { "message": "..." }
-            // { "error": "..." }
-            // { "details": "..." }
-            // { "success": false, "errors": [ { "message": "..." } ] }
-            val messageFromSimpleKeys = root["message"]?.toString()?.trim('"')
-                ?: root["error"]?.toString()?.trim('"')
-                ?: root["details"]?.toString()?.trim('"')
+            // Formato nuevo: { data: { objects: [...] } }
+            val dataObject = root["data"] as? JsonObject
+            val objectsArray = dataObject?.get("objects") as? JsonArray
+            if (objectsArray != null) {
+                return objectsArray.mapNotNull { mapNewCountry(it as? JsonObject) }
+            }
+
+            // Compatibilidad con variante: { data: [...] }
+            val dataArray = root["data"] as? JsonArray
+            if (dataArray != null) {
+                return json.decodeFromJsonElement(dataArray)
+            }
+
+            val messageFromSimpleKeys = root.readString("message")
+                ?: root.readString("error")
+                ?: root.readString("details")
 
             if (!messageFromSimpleKeys.isNullOrEmpty()) {
                 throw IllegalStateException(messageFromSimpleKeys)
             }
 
-            // Si la respuesta trae un array "errors" con objetos que contienen "message"
-            val errorsElement = root["errors"]
-            if (errorsElement is JsonArray && errorsElement.isNotEmpty()) {
-                val firstError = errorsElement[0]
-                if (firstError is JsonObject) {
-                    val errMsg = firstError["message"]?.toString()?.trim('"')
-                    if (!errMsg.isNullOrEmpty()) {
-                        throw IllegalStateException(errMsg)
-                    }
+            val errorsElement = root["errors"] as? JsonArray
+            if (!errorsElement.isNullOrEmpty()) {
+                val firstError = errorsElement.firstOrNull() as? JsonObject
+                val errMsg = firstError?.readString("message")
+                if (!errMsg.isNullOrEmpty()) {
+                    throw IllegalStateException(errMsg)
                 }
             }
 
@@ -192,5 +144,161 @@ class RestCountriesClient(
         }
 
         throw IllegalStateException("Formato de respuesta no soportado")
+    }
+
+    private fun mapNewCountry(obj: JsonObject?): RemoteCountryDTO? {
+        if (obj == null) return null
+
+        val codes = obj["codes"] as? JsonObject
+        val code = codes?.readString("alpha_2")
+            ?: obj.readString("cca2")
+            ?: return null
+
+        val names = (obj["names"] as? JsonObject) ?: (obj["name"] as? JsonObject)
+        val commonName = names?.readString("common") ?: code
+        val officialName = names?.readString("official") ?: commonName
+
+        val capitalsElement = obj["capitals"] ?: obj["capital"]
+        val capitals = parseCapitals(capitalsElement)
+
+        val currencies = parseCurrencies(obj["currencies"])
+        val languages = parseLanguages(obj["languages"])
+        val timezones = parseTimezones(obj["timezones"])
+        val latlng = parseLatLng(obj)
+        val flags = parseFlags(obj)
+
+        return RemoteCountryDTO(
+            cca2 = code,
+            name = RemoteCountryNameDTO(common = commonName, official = officialName),
+            region = obj.readString("region") ?: "",
+            subregion = obj.readString("subregion") ?: "",
+            capital = capitals,
+            currencies = currencies,
+            languages = languages,
+            timezones = timezones,
+            latlng = latlng,
+            flags = flags,
+            population = obj.readInt("population") ?: 0
+        )
+    }
+
+    private fun parseCapitals(element: JsonElement?): List<String> {
+        return when (element) {
+            is JsonArray -> element.mapNotNull { e ->
+                when (e) {
+                    is JsonPrimitive -> e.content.takeIf { it.isNotBlank() }
+                    is JsonObject -> e.readString("name")?.takeIf { it.isNotBlank() }
+                    else -> null
+                }
+            }
+
+            is JsonObject -> listOfNotNull(element.readString("name")?.takeIf { it.isNotBlank() })
+            is JsonPrimitive -> listOfNotNull(element.content.takeIf { it.isNotBlank() })
+            else -> emptyList()
+        }
+    }
+
+    private fun parseCurrencies(element: JsonElement?): Map<String, RemoteCurrencyDTO> {
+        if (element is JsonObject) {
+            val directCode = element.readString("code")
+            if (!directCode.isNullOrBlank()) {
+                return mapOf(
+                    directCode to RemoteCurrencyDTO(
+                        name = element.readString("name") ?: directCode,
+                        symbol = element.readString("symbol") ?: directCode
+                    )
+                )
+            }
+
+            // Compatibilidad con formato legacy: { "USD": { "name": "...", "symbol": "..." } }
+            return element.mapNotNull { (code, value) ->
+                val valueObj = value as? JsonObject ?: return@mapNotNull null
+                code to RemoteCurrencyDTO(
+                    name = valueObj.readString("name") ?: code,
+                    symbol = valueObj.readString("symbol") ?: code
+                )
+            }.toMap()
+        }
+
+        if (element is JsonArray) {
+            return element.mapNotNull { currencyElement ->
+                val obj = currencyElement as? JsonObject ?: return@mapNotNull null
+                val code = obj.readString("code") ?: return@mapNotNull null
+                code to RemoteCurrencyDTO(
+                    name = obj.readString("name") ?: code,
+                    symbol = obj.readString("symbol") ?: code
+                )
+            }.toMap()
+        }
+
+        return emptyMap()
+    }
+
+    private fun parseLanguages(element: JsonElement?): Map<String, String> {
+        if (element is JsonObject) {
+            // Compatibilidad formato legacy: { "spa": "Spanish" }
+            return element.mapNotNull { (code, value) ->
+                val primitive = value as? JsonPrimitive ?: return@mapNotNull null
+                val name = primitive.content
+                code to name
+            }.toMap()
+        }
+
+        if (element is JsonArray) {
+            return element.mapNotNull { languageElement ->
+                val obj = languageElement as? JsonObject ?: return@mapNotNull null
+                val code = obj.readString("iso639_3")
+                    ?: obj.readString("iso639_1")
+                    ?: obj.readString("bcp47")
+                    ?: return@mapNotNull null
+                val name = obj.readString("name") ?: return@mapNotNull null
+                code to name
+            }.toMap()
+        }
+
+        return emptyMap()
+    }
+
+    private fun parseTimezones(element: JsonElement?): List<String> {
+        return when (element) {
+            is JsonArray -> element.mapNotNull { (it as? JsonPrimitive)?.content }
+            is JsonPrimitive -> listOfNotNull(element.content)
+            else -> emptyList()
+        }
+    }
+
+    private fun parseLatLng(obj: JsonObject): List<Double> {
+        val coordinates = obj["coordinates"] as? JsonObject
+        val lat = coordinates?.readDouble("lat")
+        val lng = coordinates?.readDouble("lng")
+        if (lat != null && lng != null) {
+            return listOf(lat, lng)
+        }
+
+        val legacy = obj["latlng"] as? JsonArray
+        if (legacy != null) {
+            return legacy.mapNotNull { (it as? JsonPrimitive)?.content?.toDoubleOrNull() }
+        }
+
+        return emptyList()
+    }
+
+    private fun parseFlags(obj: JsonObject): RemoteFlagsDTO {
+        val flag = (obj["flag"] as? JsonObject) ?: (obj["flags"] as? JsonObject)
+        val png = flag?.readString("url_png") ?: flag?.readString("png") ?: ""
+        val svg = flag?.readString("url_svg") ?: flag?.readString("svg") ?: ""
+        return RemoteFlagsDTO(png = png, svg = svg)
+    }
+
+    private fun JsonObject.readString(key: String): String? {
+        return (this[key] as? JsonPrimitive)?.content
+    }
+
+    private fun JsonObject.readInt(key: String): Int? {
+        return (this[key] as? JsonPrimitive)?.content?.toIntOrNull()
+    }
+
+    private fun JsonObject.readDouble(key: String): Double? {
+        return (this[key] as? JsonPrimitive)?.content?.toDoubleOrNull()
     }
 }

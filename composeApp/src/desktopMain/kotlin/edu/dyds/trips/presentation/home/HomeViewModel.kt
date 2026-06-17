@@ -51,4 +51,3 @@ class HomeViewModel(
         scope.cancel()
     }
 }
-
