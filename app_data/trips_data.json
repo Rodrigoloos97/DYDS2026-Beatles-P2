@@ -1,13 +1,1 @@
-{
-    "trips": [
-        {
-            "id": "6e1fc27d-0306-4b67-9b98-d5413fac094c",
-            "countryCode": "PE",
-            "countryName": "Peru",
-            "startDate": "2025-06-17",
-            "endDate": "2026-06-22",
-            "notes": "test2",
-            "createdAt": 1781703187043
-        }
-    ]
-}
+{}
