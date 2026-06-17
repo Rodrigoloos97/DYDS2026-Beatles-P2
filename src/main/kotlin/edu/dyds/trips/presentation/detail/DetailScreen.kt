@@ -2,6 +2,7 @@ package edu.dyds.trips.presentation.detail
 
 import edu.dyds.trips.domain.entity.CountryDetail
 import edu.dyds.trips.domain.entity.Trip
+import edu.dyds.trips.presentation.trips.TripOperationUiState
 import edu.dyds.trips.presentation.trips.TripsViewModel
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
@@ -80,6 +81,25 @@ fun createAndShowDetailScreen(
         }
     }
 
+    scope.launch {
+        tripsViewModel.operationState.collectLatest { operationState ->
+            SwingUtilities.invokeLater {
+                when (operationState) {
+                    TripOperationUiState.Idle,
+                    TripOperationUiState.InFlight -> Unit
+                    is TripOperationUiState.Success -> {
+                        JOptionPane.showMessageDialog(frame, operationState.message)
+                        tripsViewModel.clearOperationState()
+                    }
+                    is TripOperationUiState.Error -> {
+                        JOptionPane.showMessageDialog(frame, "No se pudo guardar: ${operationState.message}")
+                        tripsViewModel.clearOperationState()
+                    }
+                }
+            }
+        }
+    }
+
     saveTripButton.addActionListener {
         val detail = currentDetail ?: return@addActionListener
         val startDate = JOptionPane.showInputDialog(frame, "Fecha inicio (yyyy-MM-dd):") ?: return@addActionListener
@@ -94,17 +114,7 @@ fun createAndShowDetailScreen(
                 endDate = endDate,
                 notes = notes
             )
-        ) { result ->
-            SwingUtilities.invokeLater {
-                when (result) {
-                    is edu.dyds.trips.domain.entity.Result.Success ->
-                        JOptionPane.showMessageDialog(frame, "Viaje guardado")
-
-                    is edu.dyds.trips.domain.entity.Result.Failure ->
-                        JOptionPane.showMessageDialog(frame, "No se pudo guardar: ${result.exception.message}")
-                }
-            }
-        }
+        )
     }
 
     frame.setLocationRelativeTo(null)

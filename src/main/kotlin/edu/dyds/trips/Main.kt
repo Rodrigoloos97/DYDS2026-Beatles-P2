@@ -1,6 +1,5 @@
 package edu.dyds.trips
 
-import edu.dyds.trips.data.broker.CountryWeatherBroker
 import edu.dyds.trips.data.local.TripsJsonPersistence
 import edu.dyds.trips.data.local.TripsLocalDataSourceImpl
 import edu.dyds.trips.data.remote.countries.CountriesRemoteDataSourceImpl
@@ -12,6 +11,7 @@ import edu.dyds.trips.data.repository.TripsRepositoryImpl
 import edu.dyds.trips.data.repository.WeatherRepositoryImpl
 import edu.dyds.trips.domain.usecase.DeleteTripUseCaseImpl
 import edu.dyds.trips.domain.usecase.GetCountriesUseCaseImpl
+import edu.dyds.trips.domain.usecase.GetCountryDetailsUseCaseImpl
 import edu.dyds.trips.domain.usecase.GetTripsUseCaseImpl
 import edu.dyds.trips.domain.usecase.SaveTripUseCaseImpl
 import edu.dyds.trips.domain.usecase.SearchCountriesUseCaseImpl
@@ -60,15 +60,17 @@ fun main() {
         deleteTripUseCase = DeleteTripUseCaseImpl(tripsRepository)
     )
 
-    val broker = CountryWeatherBroker(countriesRepository, weatherRepository)
+    val getCountryDetailsUseCase = GetCountryDetailsUseCaseImpl(
+        countriesRepository = countriesRepository,
+        weatherRepository = weatherRepository
+    )
 
     SwingUtilities.invokeLater {
         createAndShowAppWindow(
             homeViewModel = homeViewModel,
             tripsViewModel = tripsViewModel,
-            createDetailViewModel = { DetailViewModel(broker) },
+            createDetailViewModel = { DetailViewModel(getCountryDetailsUseCase) },
             onClose = {
-                tripsViewModel.dispose()
                 httpClient.close()
             }
         )

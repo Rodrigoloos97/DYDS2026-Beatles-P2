@@ -1,6 +1,5 @@
 package edu.dyds.trips.presentation.trips
 
-import edu.dyds.trips.domain.entity.Result
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.SupervisorJob
@@ -69,17 +68,27 @@ fun createAndShowTripsScreen(viewModel: TripsViewModel) {
         }
     }
 
+    scope.launch {
+        viewModel.operationState.collectLatest { operationState ->
+            SwingUtilities.invokeLater {
+                when (operationState) {
+                    TripOperationUiState.Idle,
+                    TripOperationUiState.InFlight -> Unit
+                    is TripOperationUiState.Success -> viewModel.clearOperationState()
+                    is TripOperationUiState.Error -> {
+                        status.text = "No se pudo eliminar: ${operationState.message}"
+                        viewModel.clearOperationState()
+                    }
+                }
+            }
+        }
+    }
+
     refreshButton.addActionListener { viewModel.loadTrips() }
     deleteButton.addActionListener {
         val index = list.selectedIndex
         if (index >= 0 && index < idsByIndex.size) {
-            viewModel.deleteTrip(idsByIndex[index]) { result ->
-                if (result is Result.Failure) {
-                    SwingUtilities.invokeLater {
-                        status.text = "No se pudo eliminar: ${result.exception.message}"
-                    }
-                }
-            }
+            viewModel.deleteTrip(idsByIndex[index])
         }
     }
 

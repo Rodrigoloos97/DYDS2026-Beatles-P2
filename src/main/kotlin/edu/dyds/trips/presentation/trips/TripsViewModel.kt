@@ -26,6 +26,10 @@ class TripsViewModel(
     private val _uiState = MutableStateFlow<TripsUiState>(TripsUiState.Loading)
     val uiState: StateFlow<TripsUiState> = _uiState.asStateFlow()
 
+    private val _operationState = MutableStateFlow<TripOperationUiState>(TripOperationUiState.Idle)
+    @Suppress("unused") // consumed by UI screens via StateFlow observation
+    val operationState: StateFlow<TripOperationUiState> = _operationState.asStateFlow()
+
     fun loadTrips() {
         scope.launch {
             _uiState.value = TripsUiState.Loading
@@ -36,28 +40,51 @@ class TripsViewModel(
         }
     }
 
-    fun saveTrip(trip: Trip, onDone: (Result<Unit>) -> Unit = {}) {
+    fun saveTrip(trip: Trip) {
         scope.launch {
+            _operationState.value = TripOperationUiState.InFlight
             val result = saveTripUseCase(trip)
-            onDone(result)
-            if (result is Result.Success) loadTrips()
+            _operationState.value = when (result) {
+                is Result.Success -> {
+                    loadTrips()
+                    TripOperationUiState.Success("Viaje guardado correctamente")
+                }
+                is Result.Failure -> TripOperationUiState.Error(result.exception.message ?: "No se pudo guardar el viaje")
+            }
         }
     }
 
-    fun updateTrip(trip: Trip, onDone: (Result<Unit>) -> Unit = {}) {
+    fun updateTrip(trip: Trip) {
         scope.launch {
+            _operationState.value = TripOperationUiState.InFlight
             val result = updateTripUseCase(trip)
-            onDone(result)
-            if (result is Result.Success) loadTrips()
+            _operationState.value = when (result) {
+                is Result.Success -> {
+                    loadTrips()
+                    TripOperationUiState.Success("Viaje actualizado correctamente")
+                }
+                is Result.Failure -> TripOperationUiState.Error(result.exception.message ?: "No se pudo actualizar el viaje")
+            }
         }
     }
 
-    fun deleteTrip(id: String, onDone: (Result<Unit>) -> Unit = {}) {
+    fun deleteTrip(id: String) {
         scope.launch {
+            _operationState.value = TripOperationUiState.InFlight
             val result = deleteTripUseCase(id)
-            onDone(result)
-            if (result is Result.Success) loadTrips()
+            _operationState.value = when (result) {
+                is Result.Success -> {
+                    loadTrips()
+                    TripOperationUiState.Success("Viaje eliminado correctamente")
+                }
+                is Result.Failure -> TripOperationUiState.Error(result.exception.message ?: "No se pudo eliminar el viaje")
+            }
         }
+    }
+
+    @Suppress("unused") // called by UI screens after handling operationState
+    fun clearOperationState() {
+        _operationState.value = TripOperationUiState.Idle
     }
 
     fun dispose() {

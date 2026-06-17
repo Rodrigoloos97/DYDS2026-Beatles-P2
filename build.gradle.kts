@@ -35,11 +35,10 @@ kotlin {
 
 sourceSets {
     named("main") {
-        kotlin.srcDir("composeApp/src/commonMain/kotlin")
-        kotlin.srcDir("composeApp/src/desktopMain/kotlin")
+        kotlin.srcDir("src/main/kotlin")
     }
     named("test") {
-        kotlin.srcDir("composeApp/src/desktopTest/kotlin")
+        kotlin.srcDir("src/test/kotlin")
     }
 }
 

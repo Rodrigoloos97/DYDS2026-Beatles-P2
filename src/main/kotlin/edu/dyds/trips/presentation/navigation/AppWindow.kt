@@ -1,13 +1,14 @@
 package edu.dyds.trips.presentation.navigation
 
+import edu.dyds.trips.domain.entity.Country
 import edu.dyds.trips.domain.entity.CountryDetail
-import edu.dyds.trips.domain.entity.Result
 import edu.dyds.trips.domain.entity.Trip
 import edu.dyds.trips.domain.entity.WeatherForecast
 import edu.dyds.trips.presentation.detail.DetailUiState
 import edu.dyds.trips.presentation.detail.DetailViewModel
 import edu.dyds.trips.presentation.home.HomeUiState
 import edu.dyds.trips.presentation.home.HomeViewModel
+import edu.dyds.trips.presentation.trips.TripOperationUiState
 import edu.dyds.trips.presentation.trips.TripsUiState
 import edu.dyds.trips.presentation.trips.TripsViewModel
 import kotlinx.coroutines.CoroutineScope
@@ -15,6 +16,7 @@ import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.cancel
 import kotlinx.coroutines.flow.collectLatest
+import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.launch
 import java.awt.*
 import java.awt.event.MouseAdapter
@@ -30,6 +32,14 @@ import javax.swing.plaf.basic.BasicScrollBarUI
 private const val ROUTE_HOME   = "home"
 private const val ROUTE_DETAIL = "detail"
 private const val ROUTE_TRIPS  = "trips"
+
+private data class CountryListItem(val country: Country) {
+    override fun toString(): String = country.name
+}
+
+private data class TripListItem(val trip: Trip) {
+    override fun toString(): String = trip.countryName
+}
 
 // ══════════════════════════════════════════════════════════════════════════════
 //  T H E M E
@@ -137,7 +147,7 @@ private class GPanel(
 
 private class WBtn(
     text: String,
-    private val style: Style = Style.GHOST
+    style: Style = Style.GHOST
 ) : JButton(text) {
     enum class Style { PRIMARY, SECONDARY, DANGER, GHOST }
 
@@ -244,16 +254,15 @@ private class WField(cols: Int = 20, private val placeholder: String = "") : JTe
     }
 }
 
-private class CountryRenderer : ListCellRenderer<String> {
+private class CountryRenderer : ListCellRenderer<CountryListItem> {
     override fun getListCellRendererComponent(
-        list: JList<out String>, value: String?, index: Int,
+        list: JList<out CountryListItem>, value: CountryListItem?, index: Int,
         isSelected: Boolean, cellHasFocus: Boolean
     ): Component {
-        val raw    = value ?: ""
-        val code   = raw.substringBefore(" - ").trim()
-        val rest   = raw.substringAfter(" - ")
-        val region = rest.substringAfterLast("(").substringBefore(")").trim()
-        val name   = rest.substringBeforeLast("(").trim()
+        val country = value?.country
+        val code = country?.code ?: ""
+        val name = country?.name ?: ""
+        val region = country?.region ?: ""
 
         val panel = object : JPanel(BorderLayout(14, 0)) {
             override fun paintComponent(g: Graphics) {
@@ -304,20 +313,17 @@ private class CountryRenderer : ListCellRenderer<String> {
     }
 }
 
-private class TripRenderer : ListCellRenderer<String> {
+private class TripRenderer : ListCellRenderer<TripListItem> {
     override fun getListCellRendererComponent(
-        list: JList<out String>, value: String?, index: Int,
+        list: JList<out TripListItem>, value: TripListItem?, index: Int,
         isSelected: Boolean, cellHasFocus: Boolean
     ): Component {
-        val raw   = value ?: ""
-        val parts = raw.split("|").map { it.trim() }
-        val cPart = parts.getOrNull(0) ?: ""
-        val dPart = parts.getOrNull(1) ?: ""
-        val notes = parts.getOrNull(2) ?: ""
-        val cName = cPart.substringBefore("(").trim()
-        val cCode = cPart.substringAfter("(").substringBefore(")").trim()
-        val start = dPart.substringBefore("->").trim()
-        val end   = dPart.substringAfter("->").trim()
+        val trip = value?.trip
+        val cName = trip?.countryName ?: ""
+        val cCode = trip?.countryCode ?: ""
+        val start = trip?.startDate ?: ""
+        val end = trip?.endDate ?: ""
+        val notes = trip?.notes ?: ""
 
         val panel = object : JPanel(BorderLayout(12, 0)) {
             override fun paintComponent(g: Graphics) {
@@ -383,6 +389,7 @@ fun createAndShowAppWindow(
     cards.add(homePanel, ROUTE_HOME); cards.add(detailPanel, ROUTE_DETAIL); cards.add(tripsPanel, ROUTE_TRIPS)
 
     val uiScope = CoroutineScope(SupervisorJob() + Dispatchers.Default)
+    var activeDetailViewModel: DetailViewModel? = null
 
     val navHome  = NavBtn("\uD83D\uDDFA  Explorar")
     val navTrips = NavBtn("\u2708  Mis Viajes")
@@ -395,7 +402,7 @@ fun createAndShowAppWindow(
 
     navHome.addActionListener  { navigate(ROUTE_HOME) }
     navTrips.addActionListener {
-        configureTripsPanel(tripsPanel, uiScope, tripsViewModel) { navigate(ROUTE_HOME) }
+        configureTripsPanel(tripsPanel, uiScope, tripsViewModel)
         navigate(ROUTE_TRIPS)
     }
 
@@ -404,12 +411,20 @@ fun createAndShowAppWindow(
         scope     = uiScope,
         viewModel = homeViewModel,
         onOpenDetail = { code ->
-            configureDetailPanel(detailPanel, uiScope, code, createDetailViewModel(), tripsViewModel) { navigate(ROUTE_HOME) }
+            activeDetailViewModel?.dispose()
+            val detailViewModel = createDetailViewModel()
+            activeDetailViewModel = detailViewModel
+            configureDetailPanel(
+                panel = detailPanel,
+                scope = uiScope,
+                countryCode = code,
+                detailViewModel = detailViewModel,
+                onSaveTrip = { trip -> tripsViewModel.saveTrip(trip) },
+                saveOperationState = tripsViewModel.operationState,
+                clearSaveOperationState = { tripsViewModel.clearOperationState() },
+                onBack = { navigate(ROUTE_HOME) }
+            )
             navigate(ROUTE_DETAIL)
-        },
-        onOpenTrips = {
-            configureTripsPanel(tripsPanel, uiScope, tripsViewModel) { navigate(ROUTE_HOME) }
-            navigate(ROUTE_TRIPS)
         }
     )
 
@@ -420,7 +435,11 @@ fun createAndShowAppWindow(
 
     frame.addWindowListener(object : WindowAdapter() {
         override fun windowClosed(e: WindowEvent?) {
-            uiScope.cancel(); homeViewModel.dispose(); tripsViewModel.dispose(); onClose()
+            uiScope.cancel()
+            activeDetailViewModel?.dispose()
+            homeViewModel.dispose()
+            tripsViewModel.dispose()
+            onClose()
         }
     })
     frame.setLocationRelativeTo(null)
@@ -461,7 +480,7 @@ private fun buildNavBar(homeBtn: NavBtn, tripsBtn: NavBtn): JPanel {
 
 private fun configureHomePanel(
     panel: JPanel, scope: CoroutineScope, viewModel: HomeViewModel,
-    onOpenDetail: (String) -> Unit, onOpenTrips: () -> Unit
+    onOpenDetail: (String) -> Unit
 ) {
     panel.removeAll()
 
@@ -481,14 +500,14 @@ private fun configureHomePanel(
     val sectionL = lbl("Países del Mundo", T.F_H2, T.TEXT_SEC)
     sectionHeader.add(sectionL, BorderLayout.WEST)
 
-    val listModel   = DefaultListModel<String>()
+    val listModel   = DefaultListModel<CountryListItem>()
     val countryList = JList(listModel)
     countryList.cellRenderer = CountryRenderer()
     countryList.background = T.BG; countryList.selectionBackground = T.BG_SEL
     countryList.selectionForeground = T.TEXT; countryList.fixedCellHeight = -1; countryList.border = null
     countryList.addMouseListener(object : MouseAdapter() {
         override fun mouseClicked(e: MouseEvent) {
-            if (e.clickCount == 2) countryList.selectedValue?.let { onOpenDetail(it.substringBefore(" - ").trim()) }
+            if (e.clickCount == 2) countryList.selectedValue?.let { onOpenDetail(it.country.code) }
         }
     })
 
@@ -513,7 +532,7 @@ private fun configureHomePanel(
     detailBtn.addActionListener {
         val sel = countryList.selectedValue
         if (sel == null) { showMsg(panel, "Selecciona un país de la lista."); return@addActionListener }
-        onOpenDetail(sel.substringBefore(" - ").trim())
+        onOpenDetail(sel.country.code)
     }
 
     scope.launch {
@@ -529,7 +548,7 @@ private fun configureHomePanel(
                     is HomeUiState.Success -> {
                         listModel.clear()
                         state.countries.sortedBy { it.name }.forEach { c ->
-                            listModel.addElement("${c.code} - ${c.name} (${c.region})")
+                            listModel.addElement(CountryListItem(c))
                         }
                         statusL.text = "\u2713  ${state.countries.size} países cargados"
                         statusL.foreground = T.EMERALD
@@ -547,7 +566,11 @@ private fun configureHomePanel(
 
 private fun configureDetailPanel(
     panel: JPanel, scope: CoroutineScope, countryCode: String,
-    detailViewModel: DetailViewModel, tripsViewModel: TripsViewModel, onBack: () -> Unit
+    detailViewModel: DetailViewModel,
+    onSaveTrip: (Trip) -> Unit,
+    saveOperationState: StateFlow<TripOperationUiState>,
+    clearSaveOperationState: () -> Unit,
+    onBack: () -> Unit
 ) {
     panel.removeAll()
 
@@ -608,13 +631,25 @@ private fun configureDetailPanel(
         val start = getValidatedDate(panel, "Fecha de inicio (yyyy-MM-dd):") ?: return@addActionListener
         val end   = getValidatedDate(panel, "Fecha de fin (yyyy-MM-dd):")   ?: return@addActionListener
         val notes = showTextInputDialog(panel, "Notas del viaje", "Podés dejar notas para recordar este plan:") ?: ""
-        tripsViewModel.saveTrip(
+        onSaveTrip(
             Trip(countryCode = d.country.code, countryName = d.country.name, startDate = start, endDate = end, notes = notes)
-        ) { result ->
+        )
+    }
+
+    scope.launch {
+        saveOperationState.collectLatest { operationState ->
             SwingUtilities.invokeLater {
-                when (result) {
-                    is Result.Success -> showMsg(panel, "\u2713  ¡Viaje guardado exitosamente!")
-                    is Result.Failure -> showMsg(panel, "\u26A0  Error: ${result.exception.message}")
+                when (operationState) {
+                    TripOperationUiState.Idle,
+                    TripOperationUiState.InFlight -> Unit
+                    is TripOperationUiState.Success -> {
+                        showMsg(panel, "\u2713  ${operationState.message}")
+                        clearSaveOperationState()
+                    }
+                    is TripOperationUiState.Error -> {
+                        showMsg(panel, "\u26A0  Error: ${operationState.message}")
+                        clearSaveOperationState()
+                    }
                 }
             }
         }
@@ -718,7 +753,7 @@ private fun buildWeatherCard(day: WeatherForecast): JPanel {
 // ══════════════════════════════════════════════════════════════════════════════
 
 private fun configureTripsPanel(
-    panel: JPanel, scope: CoroutineScope, viewModel: TripsViewModel, onBack: () -> Unit
+    panel: JPanel, scope: CoroutineScope, viewModel: TripsViewModel
 ) {
     panel.removeAll()
 
@@ -741,8 +776,7 @@ private fun configureTripsPanel(
     heroLeft.add(lbl("\u2708  Mis Viajes", T.F_TITLE, T.TEXT)); heroLeft.add(countBadge)
     hero.add(heroLeft, BorderLayout.WEST)
 
-    val tripIds   = mutableListOf<String>()
-    val listModel = DefaultListModel<String>()
+    val listModel = DefaultListModel<TripListItem>()
     val tripList  = JList(listModel)
     tripList.cellRenderer = TripRenderer(); tripList.background = T.BG
     tripList.selectionBackground = T.BG_SEL; tripList.selectionForeground = T.TEXT
@@ -760,29 +794,66 @@ private fun configureTripsPanel(
     panel.add(hero, BorderLayout.NORTH); panel.add(styledScroll(tripList), BorderLayout.CENTER); panel.add(bottomBar, BorderLayout.SOUTH)
 
     editBtn.addActionListener {
-        val idx = tripList.selectedIndex
-        if (idx < 0 || idx >= tripIds.size) { showMsg(panel, "Selecciona un viaje para editar."); return@addActionListener }
-        val raw   = listModel.getElementAt(idx)
-        val parts = raw.split("|").map { it.trim() }
-        val dPart = parts.getOrNull(1) ?: ""; val cPart = parts.firstOrNull() ?: ""
-        val startOld = dPart.substringBefore("->").trim().ifBlank { "2026-07-01" }
-        val endOld   = dPart.substringAfter("->").trim().ifBlank { "2026-07-10" }
-        val notesOld = parts.getOrNull(2) ?: ""
-        val cName = cPart.substringBefore("(").trim(); val cCode = cPart.substringAfter("(").substringBefore(")").trim()
+        val selectedTrip = tripList.selectedValue?.trip
+        if (selectedTrip == null) {
+            showMsg(panel, "Selecciona un viaje para editar.")
+            return@addActionListener
+        }
+        val startOld = selectedTrip.startDate.ifBlank { "2026-07-01" }
+        val endOld = selectedTrip.endDate.ifBlank { "2026-07-10" }
+        val notesOld = selectedTrip.notes
         val start = getValidatedDate(panel, "Fecha de inicio (yyyy-MM-dd):", startOld) ?: return@addActionListener
         val end   = getValidatedDate(panel, "Fecha de fin (yyyy-MM-dd):",   endOld)   ?: return@addActionListener
         val notes = showTextInputDialog(panel, "Editar notas", "Actualizá las notas del viaje:", notesOld) ?: ""
-        viewModel.updateTrip(Trip(id = tripIds[idx], countryCode = cCode, countryName = cName, startDate = start, endDate = end, notes = notes)) { result ->
-            if (result is Result.Failure) SwingUtilities.invokeLater { statusL.text = "\u26A0  Error: ${result.exception.message}" }
-        }
+        viewModel.updateTrip(
+            Trip(
+                id = selectedTrip.id,
+                countryCode = selectedTrip.countryCode,
+                countryName = selectedTrip.countryName,
+                startDate = start,
+                endDate = end,
+                notes = notes,
+                createdAt = selectedTrip.createdAt
+            )
+        )
     }
 
     deleteBtn.addActionListener {
-        val idx = tripList.selectedIndex
-        if (idx < 0 || idx >= tripIds.size) { showMsg(panel, "Selecciona un viaje para eliminar."); return@addActionListener }
-        if (showConfirmDialog(panel, "Eliminar viaje", "¿Eliminar este viaje? Esta acción no se puede deshacer.")) {
-            viewModel.deleteTrip(tripIds[idx]) { result ->
-                if (result is Result.Failure) SwingUtilities.invokeLater { statusL.text = "\u26A0  Error: ${result.exception.message}" }
+        val selectedTrip = tripList.selectedValue?.trip
+        if (selectedTrip == null) {
+            showMsg(panel, "Selecciona un viaje para eliminar.")
+            return@addActionListener
+        }
+        if (showConfirmDeleteDialog(panel)) {
+            viewModel.deleteTrip(selectedTrip.id)
+        }
+    }
+
+    scope.launch {
+        viewModel.operationState.collectLatest { operationState ->
+            SwingUtilities.invokeLater {
+                when (operationState) {
+                    TripOperationUiState.Idle -> {
+                        editBtn.isEnabled = true
+                        deleteBtn.isEnabled = true
+                    }
+                    TripOperationUiState.InFlight -> {
+                        editBtn.isEnabled = false
+                        deleteBtn.isEnabled = false
+                    }
+                    is TripOperationUiState.Success -> {
+                        editBtn.isEnabled = true
+                        deleteBtn.isEnabled = true
+                        viewModel.clearOperationState()
+                    }
+                    is TripOperationUiState.Error -> {
+                        editBtn.isEnabled = true
+                        deleteBtn.isEnabled = true
+                        statusL.text = "\u26A0  Error: ${operationState.message}"
+                        statusL.foreground = T.RED
+                        viewModel.clearOperationState()
+                    }
+                }
             }
         }
     }
@@ -794,13 +865,12 @@ private fun configureTripsPanel(
                     TripsUiState.Loading -> { statusL.text = "\u23F3  Cargando viajes..."; statusL.foreground = T.TEXT_MUTED; countBadge.text = "" }
                     is TripsUiState.Error -> {
                         statusL.text = "\u26A0  Error: ${state.message}"; statusL.foreground = T.RED
-                        listModel.clear(); tripIds.clear(); countBadge.text = ""
+                        listModel.clear(); countBadge.text = ""
                     }
                     is TripsUiState.Success -> {
-                        listModel.clear(); tripIds.clear()
+                        listModel.clear()
                         state.trips.forEach { trip ->
-                            tripIds.add(trip.id)
-                            listModel.addElement("${trip.countryName} (${trip.countryCode}) | ${trip.startDate} -> ${trip.endDate} | ${trip.notes}")
+                            listModel.addElement(TripListItem(trip))
                         }
                         val n = state.trips.size
                         statusL.text = if (n == 0) "No hay viajes registrados aún." else "\u2713  $n viaje${if (n != 1) "s" else ""} guardado${if (n != 1) "s" else ""}"
@@ -868,7 +938,9 @@ private fun showMessageDialog(parent: Component, title: String, message: String,
     dialog.isVisible = true
 }
 
-private fun showConfirmDialog(parent: Component, title: String, message: String): Boolean {
+private fun showConfirmDeleteDialog(parent: Component): Boolean {
+    val title = "Eliminar viaje"
+    val message = "¿Eliminar este viaje? Esta acción no se puede deshacer."
     val owner = SwingUtilities.getWindowAncestor(parent)
     val dialog = JDialog(owner, title, Dialog.ModalityType.APPLICATION_MODAL)
     var accepted = false
