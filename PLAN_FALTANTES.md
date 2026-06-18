@@ -1,13 +1,18 @@
 # Plan de Implementación de Tareas Faltantes (Actualizado)
 
-Basado en el análisis de estado del proyecto frente al `PLAN_ASISTENTE_VIAJES_V2.md`, el sistema actual cuenta con la lógica de negocio (Domain) y acceso a datos (Data) completamente implementados, así como una UI en Swing completamente funcional.
+Basado en el análisis del estado real del proyecto frente al `PLAN_ASISTENTE_VIAJES_V2.md`, el sistema ya cuenta con:
+- lógica de dominio completa,
+- capa de datos completa,
+- UI funcional en Swing,
+- tests de ViewModels, mappers y persistencia,
+- e inyección centralizada mediante `TripsDependencyInjector`.
 
-A continuación se detalla el estado de las tareas de testing y refactorización.
+Lo que queda pendiente es solo una refactorización menor de configuración.
 
 ---
 
 ## ✅ Fase 1: Tests de la Capa de Presentación (COMPLETADO)
-*Se ha implementado la cobertura de tests para los ViewModels, cumpliendo con un requisito crítico del plan.*
+*Se implementó la cobertura de tests para los ViewModels, cumpliendo con un requisito crítico del plan.*
 
 ### ✅ 1.1 `HomeViewModelTest.kt`
 *   **Estado:** Creado y completado.
@@ -24,7 +29,7 @@ A continuación se detalla el estado de las tareas de testing y refactorización
 ---
 
 ## ✅ Fase 2: Tests de la Capa de Datos (COMPLETADO)
-*Se ha añadido la cobertura de tests para los mappers y la persistencia local, asegurando la correcta manipulación de datos.*
+*Se añadió cobertura para mappers, repositorios y persistencia local.*
 
 ### ✅ 2.1 Tests de Mappers
 *   **Estado:** Creados y completados.
@@ -33,19 +38,39 @@ A continuación se detalla el estado de las tareas de testing y refactorización
 
 ### ✅ 2.2 Tests de Persistencia Local
 *   **Estado:** Creados y completados.
-*   **Archivos:** `TripsLocalDataSourceTest.kt` y `TripsRepositoryImplTest.kt`.
+*   **Archivos:** `TripsLocalDataSourceTest.kt`, `TripsJsonPersistenceTest.kt` y `TripsRepositoryImplTest.kt`.
 *   **Ubicación:** `src/test/kotlin/edu/dyds/trips/data/local/` y `src/test/kotlin/edu/dyds/trips/data/repository/`
 
 ---
 
-##  Fase 3: Refactorización (PENDIENTE - Prioridad Baja)
+## ✅ Fase 3: Refactorización de DI (COMPLETADO)
 
-Estas tareas mejoran la estructura y mantenibilidad del proyecto, alineándolo completamente con el plan original.
-
-### 3.1 Extraer `AppConfig.kt`
-*   **Ubicación:** `src/main/kotlin/edu/dyds/trips/config/AppConfig.kt`
-*   **Acción:** Mover las constantes como `REST_COUNTRIES_BASE_URL` o `OPEN_METEO_BASE_URL` que actualmente están dentro de los clientes Ktor a este archivo centralizado.
-
-### 3.2 Extraer `TripsDependencyInjector.kt`
+### ✅ 3.1 Extraer `TripsDependencyInjector.kt`
 *   **Ubicación:** `src/main/kotlin/edu/dyds/trips/di/TripsDependencyInjector.kt`
-*   **Acción:** Mover toda la lógica de inicialización de repositorios, casos de uso y ViewModels que actualmente reside dentro de la función `main()` en `Main.kt` a este nuevo objeto `object TripsDependencyInjector`, limpiando así el punto de entrada de la aplicación.
+*   **Estado:** Implementado.
+*   **Acción realizada:** Se centralizó el armado de clientes HTTP, data sources, repositorios, use cases y factories de ViewModels; `Main.kt` quedó reducido al arranque de la app.
+
+---
+
+## ⏳ Fase 4: Refactorización de configuración (PENDIENTE - Prioridad Baja)
+
+### ⏳ 4.1 Extraer `AppConfig.kt`
+*   **Ubicación sugerida:** `src/main/kotlin/edu/dyds/trips/config/AppConfig.kt`
+*   **Acción pendiente:** Mover constantes de configuración como `REST_COUNTRIES_BASE_URL` y `OPEN_METEO_BASE_URL` a un archivo centralizado.
+*   **Estado actual:** Las constantes siguen definidas dentro de los clientes Ktor.
+
+---
+
+## ✅ Estado final resumido
+
+### Completado
+- Domain layer
+- Data layer
+- Presentation layer funcional
+- Tests de ViewModels
+- Tests de mappers
+- Tests de persistencia/repositorios
+- `TripsDependencyInjector`
+
+### Pendiente
+- `AppConfig.kt` separado

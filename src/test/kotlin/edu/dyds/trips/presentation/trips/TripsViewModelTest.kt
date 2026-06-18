@@ -54,7 +54,7 @@ class TripsViewModelTest {
         viewModel.loadTrips()
 
         // Then
-        val uiState = viewModel.uiState.first()
+        val uiState = viewModel.uiState.first { it !is TripsUiState.Loading }
         assertTrue("El estado deberia ser Success", uiState is TripsUiState.Success)
         val trips = (uiState as TripsUiState.Success).trips
         assertEquals(1, trips.size)
@@ -70,10 +70,10 @@ class TripsViewModelTest {
         viewModel.saveTrip(newTrip)
 
         // Then
-        val operationState = viewModel.operationState.first { it is TripOperationUiState.Success }
+        val operationState = viewModel.operationState.first { it is TripOperationUiState.Success || it is TripOperationUiState.Error }
         assertTrue("El estado de la operacion deberia ser Success", operationState is TripOperationUiState.Success)
 
-        val uiState = viewModel.uiState.first()
+        val uiState = viewModel.uiState.first { it !is TripsUiState.Loading }
         val trips = (uiState as TripsUiState.Success).trips
         assertEquals("Deberia haber 2 viajes ahora", 2, trips.size)
         assertTrue("El nuevo viaje deberia estar en la lista", trips.any { it.id == "trip-2" })
@@ -88,10 +88,10 @@ class TripsViewModelTest {
         viewModel.deleteTrip(tripIdToDelete)
 
         // Then
-        val operationState = viewModel.operationState.first { it is TripOperationUiState.Success }
+        val operationState = viewModel.operationState.first { it is TripOperationUiState.Success || it is TripOperationUiState.Error }
         assertTrue("El estado de la operacion deberia ser Success", operationState is TripOperationUiState.Success)
 
-        val uiState = viewModel.uiState.first()
+        val uiState = viewModel.uiState.first { it !is TripsUiState.Loading }
         val trips = (uiState as TripsUiState.Success).trips
         assertEquals("La lista de viajes deberia estar vacia", 0, trips.size)
     }
@@ -105,10 +105,10 @@ class TripsViewModelTest {
         viewModel.updateTrip(updatedTrip)
 
         // Then
-        val operationState = viewModel.operationState.first { it is TripOperationUiState.Success }
+        val operationState = viewModel.operationState.first { it is TripOperationUiState.Success || it is TripOperationUiState.Error }
         assertTrue("El estado de la operacion deberia ser Success", operationState is TripOperationUiState.Success)
 
-        val uiState = viewModel.uiState.first()
+        val uiState = viewModel.uiState.first { it !is TripsUiState.Loading }
         val trips = (uiState as TripsUiState.Success).trips
         assertEquals(1, trips.size)
         assertEquals("Notas actualizadas", trips.first().notes)

@@ -1,6 +1,5 @@
 package edu.dyds.trips.presentation.detail
 
-import edu.dyds.trips.domain.entity.CountryDetail
 import edu.dyds.trips.domain.usecase.FakeCountriesRepository
 import edu.dyds.trips.domain.usecase.FakeWeatherRepository
 import edu.dyds.trips.domain.usecase.GetCountryDetailsUseCaseImpl
@@ -54,7 +53,7 @@ class DetailViewModelTest {
         viewModel.loadCountryDetail(countryCode)
 
         // Then
-        val uiState = viewModel.uiState.first()
+        val uiState = viewModel.uiState.first { it !is DetailUiState.Loading && it !is DetailUiState.Idle }
         assertTrue("El estado deberia ser Success", uiState is DetailUiState.Success)
         val detail = (uiState as DetailUiState.Success).detail
         assertEquals(sampleCountry.code, detail.country.code)
@@ -70,7 +69,7 @@ class DetailViewModelTest {
         viewModel.loadCountryDetail(invalidCode)
 
         // Then
-        val uiState = viewModel.uiState.first()
+        val uiState = viewModel.uiState.first { it !is DetailUiState.Loading && it !is DetailUiState.Idle }
         assertTrue("El estado deberia ser Error", uiState is DetailUiState.Error)
         val errorMessage = (uiState as DetailUiState.Error).message
         assertTrue("El mensaje de error deberia indicar que no se encontro", errorMessage.contains("not found", ignoreCase = true))

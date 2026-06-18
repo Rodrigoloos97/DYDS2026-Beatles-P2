@@ -1,7 +1,8 @@
 package edu.dyds.trips.presentation.home
 
 import edu.dyds.trips.domain.entity.Country
-import edu.dyds.trips.domain.usecase.FakeCountriesRepository
+import edu.dyds.trips.domain.entity.Result
+import edu.dyds.trips.domain.repository.CountriesRepository
 import edu.dyds.trips.domain.usecase.GetCountriesUseCaseImpl
 import edu.dyds.trips.domain.usecase.SearchCountriesUseCaseImpl
 import edu.dyds.trips.domain.usecase.sampleCountry
@@ -24,7 +25,6 @@ class HomeViewModelTest {
     private val testDispatcher = StandardTestDispatcher()
 
     private lateinit var viewModel: HomeViewModel
-    private lateinit var fakeRepository: FakeCountriesRepository
     private lateinit var getCountriesUseCase: GetCountriesUseCaseImpl
     private lateinit var searchCountriesUseCase: SearchCountriesUseCaseImpl
 
@@ -36,7 +36,16 @@ class HomeViewModelTest {
     @Before
     fun setUp() {
         Dispatchers.setMain(testDispatcher)
-        fakeRepository = FakeCountriesRepository(sampleCountries)
+        val fakeRepository = object : CountriesRepository {
+            override suspend fun getCountries() = Result.Success(sampleCountries)
+            override suspend fun searchCountries(query: String) = Result.Success(
+                sampleCountries.filter { it.name.contains(query, ignoreCase = true) }
+            )
+            override suspend fun getCountryByCode(code: String) =
+                sampleCountries.firstOrNull { it.code == code }
+                    ?.let { Result.Success(it) }
+                    ?: Result.Failure(NoSuchElementException("Country not found"))
+        }
         getCountriesUseCase = GetCountriesUseCaseImpl(fakeRepository)
         searchCountriesUseCase = SearchCountriesUseCaseImpl(fakeRepository)
         viewModel = HomeViewModel(getCountriesUseCase, searchCountriesUseCase)
@@ -54,7 +63,7 @@ class HomeViewModelTest {
         viewModel.loadCountries()
 
         // Then
-        val uiState = viewModel.uiState.first()
+        val uiState = viewModel.uiState.first { it !is HomeUiState.Loading && it !is HomeUiState.Idle }
         assertTrue("El estado deberia ser Success", uiState is HomeUiState.Success)
         assertEquals(sampleCountries, (uiState as HomeUiState.Success).countries)
     }
@@ -68,7 +77,7 @@ class HomeViewModelTest {
         viewModel.searchCountries(query)
 
         // Then
-        val uiState = viewModel.uiState.first()
+        val uiState = viewModel.uiState.first { it !is HomeUiState.Loading && it !is HomeUiState.Idle }
         assertTrue("El estado deberia ser Success", uiState is HomeUiState.Success)
         val filteredCountries = (uiState as HomeUiState.Success).countries
         assertEquals(1, filteredCountries.size)
@@ -84,7 +93,7 @@ class HomeViewModelTest {
         viewModel.searchCountries(query)
 
         // Then
-        val uiState = viewModel.uiState.first()
+        val uiState = viewModel.uiState.first { it !is HomeUiState.Loading && it !is HomeUiState.Idle }
         assertTrue("El estado deberia ser Success", uiState is HomeUiState.Success)
         assertEquals(sampleCountries.size, (uiState as HomeUiState.Success).countries.size)
     }
@@ -93,10 +102,10 @@ class HomeViewModelTest {
     fun `loadCountries should emit Error when repository fails`() = runTest {
         // Given
         val errorMessage = "Error al cargar"
-        val failingRepository = object : FakeCountriesRepository(emptyList()) {
-            override suspend fun getCountries(): edu.dyds.trips.domain.entity.Result<List<Country>> {
-                return edu.dyds.trips.domain.entity.Result.Failure(Exception(errorMessage))
-            }
+        val failingRepository = object : CountriesRepository {
+            override suspend fun getCountries(): Result<List<Country>> = Result.Failure(Exception(errorMessage))
+            override suspend fun searchCountries(query: String): Result<List<Country>> = Result.Success(emptyList<Country>())
+            override suspend fun getCountryByCode(code: String): Result<Country> = Result.Failure(Exception(errorMessage))
         }
         val failingGetUseCase = GetCountriesUseCaseImpl(failingRepository)
         val failingSearchUseCase = SearchCountriesUseCaseImpl(failingRepository)
@@ -106,7 +115,7 @@ class HomeViewModelTest {
         failingViewModel.loadCountries()
 
         // Then
-        val uiState = failingViewModel.uiState.first()
+        val uiState = failingViewModel.uiState.first { it !is HomeUiState.Loading && it !is HomeUiState.Idle }
         assertTrue("El estado deberia ser Error", uiState is HomeUiState.Error)
         assertEquals(errorMessage, (uiState as HomeUiState.Error).message)
     }

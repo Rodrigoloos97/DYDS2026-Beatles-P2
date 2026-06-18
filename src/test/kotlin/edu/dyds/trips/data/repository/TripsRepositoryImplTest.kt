@@ -2,7 +2,9 @@ package edu.dyds.trips.data.repository
 
 import edu.dyds.trips.data.local.LocalTripDTO
 import edu.dyds.trips.data.local.TripsLocalDataSource
+import edu.dyds.trips.domain.entity.Result
 import edu.dyds.trips.domain.entity.Trip
+import edu.dyds.trips.domain.entity.getOrThrow
 import kotlinx.coroutines.test.runTest
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertTrue
@@ -16,26 +18,26 @@ import org.junit.Test
 class FakeTripsLocalDataSource : TripsLocalDataSource {
     private val trips = mutableListOf<LocalTripDTO>()
 
-    override suspend fun getTrips(): Result<List<LocalTripDTO>> {
-        return Result.success(trips.toList())
+    override suspend fun getTrips(): kotlin.Result<List<LocalTripDTO>> {
+        return kotlin.Result.success(trips.toList())
     }
 
-    override suspend fun saveTrip(trip: LocalTripDTO): Result<Unit> {
+    override suspend fun saveTrip(trip: LocalTripDTO): kotlin.Result<Unit> {
         trips.add(trip)
-        return Result.success(Unit)
+        return kotlin.Result.success(Unit)
     }
 
-    override suspend fun updateTrip(trip: LocalTripDTO): Result<Unit> {
+    override suspend fun updateTrip(trip: LocalTripDTO): kotlin.Result<Unit> {
         val index = trips.indexOfFirst { it.id == trip.id }
         if (index != -1) {
             trips[index] = trip
         }
-        return Result.success(Unit)
+        return kotlin.Result.success(Unit)
     }
 
-    override suspend fun deleteTrip(id: String): Result<Unit> {
+    override suspend fun deleteTrip(id: String): kotlin.Result<Unit> {
         trips.removeAll { it.id == id }
-        return Result.success(Unit)
+        return kotlin.Result.success(Unit)
     }
 }
 
@@ -60,10 +62,9 @@ class TripsRepositoryImplTest {
         val result = repository.getTrips()
 
         // Then
-        assertTrue(result.isSuccess)
+        assertTrue(result is Result.Success)
         val trips = result.getOrThrow()
         assertEquals(1, trips.size)
-        assertTrue(trips.first() is Trip)
         assertEquals("trip-1", trips.first().id)
     }
 
@@ -77,7 +78,7 @@ class TripsRepositoryImplTest {
         val getResult = repository.getTrips()
 
         // Then
-        assertTrue(saveResult.isSuccess)
+        assertTrue(saveResult is Result.Success)
         val trips = getResult.getOrThrow()
         assertEquals(1, trips.size)
         assertEquals("trip-2", trips.first().id)
@@ -94,7 +95,7 @@ class TripsRepositoryImplTest {
         val getResult = repository.getTrips()
 
         // Then
-        assertTrue(deleteResult.isSuccess)
+        assertTrue(deleteResult is Result.Success)
         assertTrue(getResult.getOrThrow().isEmpty())
     }
 }
