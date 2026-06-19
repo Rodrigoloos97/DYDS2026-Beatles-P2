@@ -1,5 +1,7 @@
 package edu.dyds.trips.di
 
+import edu.dyds.trips.config.AppConfig
+import edu.dyds.trips.config.AppConfigImpl
 import edu.dyds.trips.data.local.TripsJsonPersistence
 import edu.dyds.trips.data.local.TripsLocalDataSourceImpl
 import edu.dyds.trips.data.remote.countries.CountriesRemoteDataSourceImpl
@@ -32,6 +34,10 @@ import kotlinx.serialization.json.Json
 object TripsDependencyInjector {
     private val appScope = CoroutineScope(SupervisorJob() + Dispatchers.Default)
 
+    private val appConfig: AppConfig by lazy {
+        AppConfigImpl.fromEnvironment()
+    }
+
     private val httpClient: HttpClient by lazy {
         HttpClient(CIO) {
             install(ContentNegotiation) {
@@ -42,20 +48,20 @@ object TripsDependencyInjector {
 
     private val countriesRepository by lazy {
         CountriesRepositoryImpl(
-            CountriesRemoteDataSourceImpl(RestCountriesClient(httpClient))
+            CountriesRemoteDataSourceImpl(RestCountriesClient(httpClient, appConfig))
         )
     }
 
     private val weatherRepository by lazy {
         WeatherRepositoryImpl(
-            WeatherRemoteDataSourceImpl(OpenMeteoClient(httpClient))
+            WeatherRemoteDataSourceImpl(OpenMeteoClient(httpClient, appConfig))
         )
     }
 
     private val tripsRepository by lazy {
         TripsRepositoryImpl(
             TripsLocalDataSourceImpl(
-                TripsJsonPersistence(filePath = "app_data/trips_data.json")
+                TripsJsonPersistence(filePath = appConfig.tripsCacheFilePath)
             )
         )
     }
