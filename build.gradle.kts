@@ -29,16 +29,16 @@ dependencies {
 }
 
 kotlin {
-    // Usar Java 17 disponible localmente (se detectó JDK 17 en el sistema)
     jvmToolchain(21)
 }
 
 sourceSets {
     named("main") {
-        kotlin.srcDir("src/main/kotlin")
+        kotlin.srcDir("composeApp/src/commonMain/kotlin")
+        kotlin.srcDir("composeApp/src/desktopMain/kotlin")
     }
     named("test") {
-        kotlin.srcDir("src/test/kotlin")
+        kotlin.srcDir("composeApp/src/desktopTest/kotlin")
     }
 }
 
