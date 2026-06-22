@@ -1,5 +1,7 @@
 package edu.dyds.trips.data.remote.countries
 
+import edu.dyds.trips.config.AppConfig
+import edu.dyds.trips.config.AppConfigImpl
 import io.ktor.client.HttpClient
 import io.ktor.client.request.get
 import io.ktor.client.request.header
@@ -17,15 +19,18 @@ import java.io.File
 
 class RestCountriesClient(
     private val httpClient: HttpClient,
-    private val apiBaseUrl: String = System.getenv("REST_COUNTRIES_BASE_URL")?.trimEnd('/')
-        ?: "https://api.restcountries.com/countries/v5",
+    private val appConfig: AppConfig = AppConfigImpl.fromEnvironment(),
     // API key hardcodeada: solo se necesita la primera vez para descargar caché
     // En ejecuciones posteriores, la app funciona offline desde el archivo local
     private val apiKey: String? = "rc_live_e70d4f2c10a849cd9f6f6569d43a10c3",
-    private val countriesCacheFilePath: String = "app_data/countries_cache.json",
+    // Deprecated: usar appConfig.countriesCacheFilePath. Se mantiene para backwards compatibility.
+    private val countriesCacheFilePath: String? = null,
     private val minValidCacheCountries: Int = 50,
     private val json: Json = Json { ignoreUnknownKeys = true }
 ) {
+    // Resuelve la ruta del caché: prioridad a parámetro legacy (si se pasa), luego a appConfig
+    private val resolvedCacheFilePath: String = countriesCacheFilePath ?: appConfig.countriesCacheFilePath
+    private val apiBaseUrl: String = appConfig.restCountriesBaseUrl.trimEnd('/')
     @Volatile
     private var memoryCountriesCache: List<RemoteCountryDTO>? = null
 
@@ -105,7 +110,7 @@ class RestCountriesClient(
 
     private fun readCountriesFromDiskCache(): List<RemoteCountryDTO> {
         return try {
-            val file = File(countriesCacheFilePath)
+            val file = File(resolvedCacheFilePath)
             if (!file.exists()) return emptyList()
             if (file.length() == 0L) return emptyList()
 
@@ -122,7 +127,7 @@ class RestCountriesClient(
         if (countries.isEmpty()) return
 
         try {
-            val file = File(countriesCacheFilePath)
+            val file = File(resolvedCacheFilePath)
             file.parentFile?.mkdirs()
             file.writeText(json.encodeToString(countries))
         } catch (_: Exception) {
