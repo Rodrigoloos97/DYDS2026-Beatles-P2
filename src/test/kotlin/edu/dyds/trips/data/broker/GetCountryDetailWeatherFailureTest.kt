@@ -22,11 +22,11 @@ class GetCountryDetailWeatherFailureTest {
 
         val result = broker.getCountryDetail("AR")
 
-        // El fallo del clima NO propaga el error: degrada graciosamente
         assertIs<Result.Success<*>>(result)
         val detail = (result as Result.Success).value
         assertEquals("Argentina", detail.country.name)
         assertTrue(detail.weatherForecast.isEmpty())
     }
 }
+
 

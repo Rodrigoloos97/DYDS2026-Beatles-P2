@@ -19,8 +19,8 @@ class GetCountryDetailCodeDelegationTest {
 
         broker.getCountryDetail("AR")
 
-        // Verifica que el código recibido fue delegado sin transformación
         assertEquals("AR", fakeCountries.capturedCode)
     }
 }
+
 

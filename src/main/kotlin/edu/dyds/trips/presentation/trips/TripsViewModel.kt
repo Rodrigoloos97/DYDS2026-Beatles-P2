@@ -27,7 +27,7 @@ class TripsViewModel(
     val uiState: StateFlow<TripsUiState> = _uiState.asStateFlow()
 
     private val _operationState = MutableStateFlow<TripOperationUiState>(TripOperationUiState.Idle)
-    @Suppress("unused") // consumed by UI screens via StateFlow observation
+    @Suppress("unused")
     val operationState: StateFlow<TripOperationUiState> = _operationState.asStateFlow()
 
     fun loadTrips() {
@@ -82,7 +82,7 @@ class TripsViewModel(
         }
     }
 
-    @Suppress("unused") // called by UI screens after handling operationState
+    @Suppress("unused")
     fun clearOperationState() {
         _operationState.value = TripOperationUiState.Idle
     }

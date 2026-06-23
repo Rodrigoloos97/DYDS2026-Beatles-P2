@@ -59,10 +59,8 @@ class HomeViewModelTest {
 
     @Test
     fun `loadCountries should emit Success with countries`() = runTest {
-        // When
         viewModel.loadCountries()
 
-        // Then
         val uiState = viewModel.uiState.first { it !is HomeUiState.Loading && it !is HomeUiState.Idle }
         assertTrue("El estado deberia ser Success", uiState is HomeUiState.Success)
         assertEquals(sampleCountries, (uiState as HomeUiState.Success).countries)
@@ -70,13 +68,10 @@ class HomeViewModelTest {
 
     @Test
     fun `searchCountries with valid query should emit Success with filtered countries`() = runTest {
-        // Given
         val query = "Brazil"
 
-        // When
         viewModel.searchCountries(query)
 
-        // Then
         val uiState = viewModel.uiState.first { it !is HomeUiState.Loading && it !is HomeUiState.Idle }
         assertTrue("El estado deberia ser Success", uiState is HomeUiState.Success)
         val filteredCountries = (uiState as HomeUiState.Success).countries
@@ -86,13 +81,10 @@ class HomeViewModelTest {
 
     @Test
     fun `searchCountries with empty query should load all countries`() = runTest {
-        // Given
         val query = "   "
 
-        // When
         viewModel.searchCountries(query)
 
-        // Then
         val uiState = viewModel.uiState.first { it !is HomeUiState.Loading && it !is HomeUiState.Idle }
         assertTrue("El estado deberia ser Success", uiState is HomeUiState.Success)
         assertEquals(sampleCountries.size, (uiState as HomeUiState.Success).countries.size)
@@ -100,7 +92,6 @@ class HomeViewModelTest {
 
     @Test
     fun `loadCountries should emit Error when repository fails`() = runTest {
-        // Given
         val errorMessage = "Error al cargar"
         val failingRepository = object : CountriesRepository {
             override suspend fun getCountries(): Result<List<Country>> = Result.Failure(Exception(errorMessage))
@@ -111,10 +102,8 @@ class HomeViewModelTest {
         val failingSearchUseCase = SearchCountriesUseCaseImpl(failingRepository)
         val failingViewModel = HomeViewModel(failingGetUseCase, failingSearchUseCase)
 
-        // When
         failingViewModel.loadCountries()
 
-        // Then
         val uiState = failingViewModel.uiState.first { it !is HomeUiState.Loading && it !is HomeUiState.Idle }
         assertTrue("El estado deberia ser Error", uiState is HomeUiState.Error)
         assertEquals(errorMessage, (uiState as HomeUiState.Error).message)

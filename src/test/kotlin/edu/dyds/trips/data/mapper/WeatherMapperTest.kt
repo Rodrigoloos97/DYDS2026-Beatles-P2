@@ -9,7 +9,6 @@ class WeatherMapperTest {
 
     @Test
     fun `toDomain should map a full RemoteWeatherDTO correctly`() {
-        // Given
         val remoteDto = RemoteWeatherDTO(
             daily = DailyDTO(
                 time = listOf("2026-06-20", "2026-06-21"),
@@ -17,14 +16,12 @@ class WeatherMapperTest {
                 temperature2mMin = listOf(15.0, 16.0),
                 precipitationSum = listOf(0.0, 5.0),
                 windspeed10mMax = listOf(10.0, 15.0),
-                weatherCode = listOf(0, 61) // Sunny, Rainy
+                weatherCode = listOf(0, 61)
             )
         )
 
-        // When
         val domainForecasts = remoteDto.toDomain()
 
-        // Then
         assertEquals(2, domainForecasts.size)
 
         val firstDay = domainForecasts[0]
@@ -48,22 +45,19 @@ class WeatherMapperTest {
 
     @Test
     fun `toDomain should handle mismatched list sizes gracefully`() {
-        // Given
         val remoteDto = RemoteWeatherDTO(
             daily = DailyDTO(
                 time = listOf("2026-06-20", "2026-06-21"),
-                temperature2mMax = listOf(25.0), // Shorter list
+                temperature2mMax = listOf(25.0),
                 temperature2mMin = listOf(15.0, 16.0),
                 precipitationSum = listOf(0.0, 5.0),
                 windspeed10mMax = listOf(10.0, 15.0),
-                weatherCode = listOf(0) // Shorter list
+                weatherCode = listOf(0)
             )
         )
 
-        // When
         val domainForecasts = remoteDto.toDomain()
 
-        // Then
         assertEquals(2, domainForecasts.size)
 
         val firstDay = domainForecasts[0]
@@ -72,7 +66,6 @@ class WeatherMapperTest {
 
         val secondDay = domainForecasts[1]
         assertEquals("2026-06-21", secondDay.date)
-        // Check that default values are used due to shorter lists
         assertEquals(0.0, secondDay.tempMaxCelsius, 0.0)
         assertEquals(-1, secondDay.weatherCode)
         assertEquals("Unknown", secondDay.description)

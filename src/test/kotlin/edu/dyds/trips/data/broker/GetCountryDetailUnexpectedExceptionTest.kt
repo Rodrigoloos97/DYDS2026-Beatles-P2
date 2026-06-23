@@ -20,9 +20,9 @@ class GetCountryDetailUnexpectedExceptionTest {
 
         val result = broker.getCountryDetail("AR")
 
-        // La excepción es capturada por el bloque try/catch del broker
         assertIs<Result.Failure>(result)
         assertSame(unexpectedException, (result as Result.Failure).exception)
     }
 }
+
 

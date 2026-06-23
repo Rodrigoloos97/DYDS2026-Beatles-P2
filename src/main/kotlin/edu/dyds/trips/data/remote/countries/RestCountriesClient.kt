@@ -20,15 +20,11 @@ import java.io.File
 class RestCountriesClient(
     private val httpClient: HttpClient,
     private val appConfig: AppConfig = AppConfigImpl.fromEnvironment(),
-    // API key hardcodeada: solo se necesita la primera vez para descargar caché
-    // En ejecuciones posteriores, la app funciona offline desde el archivo local
     private val apiKey: String? = "rc_live_e70d4f2c10a849cd9f6f6569d43a10c3",
-    // Deprecated: usar appConfig.countriesCacheFilePath. Se mantiene para backwards compatibility.
     private val countriesCacheFilePath: String? = null,
     private val minValidCacheCountries: Int = 50,
     private val json: Json = Json { ignoreUnknownKeys = true }
 ) {
-    // Resuelve la ruta del caché: prioridad a parámetro legacy (si se pasa), luego a appConfig
     private val resolvedCacheFilePath: String = countriesCacheFilePath ?: appConfig.countriesCacheFilePath
     private val apiBaseUrl: String = appConfig.restCountriesBaseUrl.trimEnd('/')
     @Volatile
@@ -101,7 +97,6 @@ class RestCountriesClient(
             if (page.size < pageSize) break
             offset += pageSize
 
-            // Limite de seguridad para evitar loops infinitos por respuestas inesperadas
             if (offset > 10_000) break
         }
 
@@ -131,7 +126,6 @@ class RestCountriesClient(
             file.parentFile?.mkdirs()
             file.writeText(json.encodeToString(countries))
         } catch (_: Exception) {
-            // Cache best-effort: no interrumpir flujo principal por fallas de IO.
         }
     }
 
@@ -151,19 +145,16 @@ class RestCountriesClient(
         val root = json.parseToJsonElement(payload)
 
         if (root is JsonArray) {
-            // Compatibilidad con formato legacy (array de paises directo)
             return json.decodeFromJsonElement(root)
         }
 
         if (root is JsonObject) {
-            // Formato nuevo: { data: { objects: [...] } }
             val dataObject = root["data"] as? JsonObject
             val objectsArray = dataObject?.get("objects") as? JsonArray
             if (objectsArray != null) {
                 return objectsArray.mapNotNull { mapNewCountry(it as? JsonObject) }
             }
 
-            // Compatibilidad con variante: { data: [...] }
             val dataArray = root["data"] as? JsonArray
             if (dataArray != null) {
                 return json.decodeFromJsonElement(dataArray)
@@ -256,7 +247,6 @@ class RestCountriesClient(
                 )
             }
 
-            // Compatibilidad con formato legacy: { "USD": { "name": "...", "symbol": "..." } }
             return element.mapNotNull { (code, value) ->
                 val valueObj = value as? JsonObject ?: return@mapNotNull null
                 code to RemoteCurrencyDTO(
@@ -282,7 +272,6 @@ class RestCountriesClient(
 
     private fun parseLanguages(element: JsonElement?): Map<String, String> {
         if (element is JsonObject) {
-            // Compatibilidad formato legacy: { "spa": "Spanish" }
             return element.mapNotNull { (code, value) ->
                 val primitive = value as? JsonPrimitive ?: return@mapNotNull null
                 val name = primitive.content
@@ -348,4 +337,3 @@ class RestCountriesClient(
         return (this[key] as? JsonPrimitive)?.content?.toDoubleOrNull()
     }
 }
-

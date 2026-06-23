@@ -57,7 +57,6 @@ data class AppConfigImpl(
     override val tripsCacheFilePath: String = DEFAULT_TRIPS_CACHE_PATH
 ) : AppConfig {
     companion object {
-        // Constantes de default (valores públicos conocidos de las APIs)
         private const val DEFAULT_REST_COUNTRIES_BASE_URL = "https://api.restcountries.com/countries/v5"
         private const val DEFAULT_OPEN_METEO_BASE_URL = "https://api.open-meteo.com/v1/forecast"
         private const val DEFAULT_COUNTRIES_CACHE_PATH = "app_data/countries_cache.json"

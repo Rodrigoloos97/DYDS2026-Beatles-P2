@@ -7,9 +7,6 @@ import edu.dyds.trips.domain.entity.WeatherForecast
 import edu.dyds.trips.domain.repository.CountriesRepository
 import edu.dyds.trips.domain.repository.WeatherRepository
 
-// ── Fake de CountriesRepository ──────────────────────────────────────────────
-// Configurable mediante countryResult: permite simular éxito, fallo o excepción.
-// Captura el código recibido para verificar comportamiento en tests de interacción.
 class FakeCountriesRepository(
     private val countryResult: Result<Country> = Result.Success(sampleCountry()),
     private val throwOnCall: Exception? = null
@@ -24,14 +21,10 @@ class FakeCountriesRepository(
         return countryResult
     }
 
-    // No requeridos por el broker: implementación mínima (ISP)
     override suspend fun getCountries(): Result<List<Country>> = Result.Success(emptyList())
     override suspend fun searchCountries(query: String): Result<List<Country>> = Result.Success(emptyList())
 }
 
-// ── Fake de WeatherRepository ─────────────────────────────────────────────────
-// Configurable mediante weatherResult: permite simular éxito, fallo o lista vacía.
-// Captura las coordenadas recibidas para verificar comportamiento en tests de interacción.
 class FakeWeatherRepository(
     private val weatherResult: Result<List<WeatherForecast>> = Result.Success(listOf(sampleWeatherForecast()))
 ) : WeatherRepository {
@@ -50,8 +43,6 @@ class FakeWeatherRepository(
         return weatherResult
     }
 }
-
-// ── Builders de datos de prueba ───────────────────────────────────────────────
 
 fun sampleCountry(): Country = Country(
     code = "AR",
@@ -78,4 +69,5 @@ fun sampleWeatherForecast(): WeatherForecast = WeatherForecast(
     weatherCode = 0,
     description = "Sunny"
 )
+
 

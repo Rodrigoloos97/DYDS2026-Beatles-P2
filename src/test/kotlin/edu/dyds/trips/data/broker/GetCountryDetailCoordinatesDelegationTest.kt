@@ -10,7 +10,7 @@ class GetCountryDetailCoordinatesDelegationTest {
 
     @Test
     fun `getCountryDetail passes country coordinates to weather repository`() = runTest {
-        val country = sampleCountry() // latitude = -34.6, longitude = -58.4
+        val country = sampleCountry()
         val fakeWeather = FakeWeatherRepository()
         val broker = CountryWeatherBroker(
             countriesRepository = FakeCountriesRepository(
@@ -21,11 +21,11 @@ class GetCountryDetailCoordinatesDelegationTest {
 
         broker.getCountryDetail("AR")
 
-        // Verifica que las coordenadas del país fueron propagadas correctamente
         assertNotNull(fakeWeather.capturedLatitude)
         assertNotNull(fakeWeather.capturedLongitude)
         assertEquals(country.latitude, fakeWeather.capturedLatitude)
         assertEquals(country.longitude, fakeWeather.capturedLongitude)
     }
 }
+
 

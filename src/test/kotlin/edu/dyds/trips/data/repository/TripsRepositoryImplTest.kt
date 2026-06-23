@@ -11,10 +11,6 @@ import org.junit.Assert.assertTrue
 import org.junit.Before
 import org.junit.Test
 
-/**
- * Fake implementation of TripsLocalDataSource for testing the repository.
- * This fake operates on an in-memory list instead of a file.
- */
 class FakeTripsLocalDataSource : TripsLocalDataSource {
     private val trips = mutableListOf<LocalTripDTO>()
 
@@ -54,14 +50,11 @@ class TripsRepositoryImplTest {
 
     @Test
     fun `getTrips should return a list of domain trips`() = runTest {
-        // Given
         val tripDto = LocalTripDTO("trip-1", "AR", "Argentina", "2026-01-01", "2026-01-10", "Notes", 1L)
         fakeDataSource.saveTrip(tripDto)
 
-        // When
         val result = repository.getTrips()
 
-        // Then
         assertTrue(result is Result.Success)
         val trips = result.getOrThrow()
         assertEquals(1, trips.size)
@@ -70,14 +63,11 @@ class TripsRepositoryImplTest {
 
     @Test
     fun `saveTrip should correctly map and save a trip`() = runTest {
-        // Given
         val domainTrip = Trip(id = "trip-2", countryCode = "BR", countryName = "Brazil", startDate = "2026-08-01", endDate = "2026-08-10")
 
-        // When
         val saveResult = repository.saveTrip(domainTrip)
         val getResult = repository.getTrips()
 
-        // Then
         assertTrue(saveResult is Result.Success)
         val trips = getResult.getOrThrow()
         assertEquals(1, trips.size)
@@ -86,15 +76,12 @@ class TripsRepositoryImplTest {
 
     @Test
     fun `deleteTrip should correctly call the data source`() = runTest {
-        // Given
         val tripDto = LocalTripDTO("trip-1", "AR", "Argentina", "2026-01-01", "2026-01-10", "Notes", 1L)
         fakeDataSource.saveTrip(tripDto)
 
-        // When
         val deleteResult = repository.deleteTrip("trip-1")
         val getResult = repository.getTrips()
 
-        // Then
         assertTrue(deleteResult is Result.Success)
         assertTrue(getResult.getOrThrow().isEmpty())
     }

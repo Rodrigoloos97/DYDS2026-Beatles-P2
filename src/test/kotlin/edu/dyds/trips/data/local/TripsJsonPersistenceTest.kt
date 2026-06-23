@@ -215,7 +215,6 @@ class TripsJsonPersistenceTest {
             val trips = readResult.getOrThrow()
             assertTrue(trips.isEmpty() || (trips.size == 1 && trips.first().id == "trip-1"))
         } else {
-            // Corruption is acceptable in this destructive test, but the file must be recoverable.
             tempFile.writeText("")
             val recoveryTrip = trip.copy(id = "trip-2", notes = "Recuperado")
             persistence.saveTrip(recoveryTrip)

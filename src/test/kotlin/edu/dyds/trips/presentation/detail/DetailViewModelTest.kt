@@ -46,13 +46,10 @@ class DetailViewModelTest {
 
     @Test
     fun `loadCountryDetail with valid code should emit Success`() = runTest {
-        // Given
         val countryCode = sampleCountry.code
 
-        // When
         viewModel.loadCountryDetail(countryCode)
 
-        // Then
         val uiState = viewModel.uiState.first { it !is DetailUiState.Loading && it !is DetailUiState.Idle }
         assertTrue("El estado deberia ser Success", uiState is DetailUiState.Success)
         val detail = (uiState as DetailUiState.Success).detail
@@ -62,13 +59,10 @@ class DetailViewModelTest {
 
     @Test
     fun `loadCountryDetail with invalid code should emit Error`() = runTest {
-        // Given
         val invalidCode = "XX"
 
-        // When
         viewModel.loadCountryDetail(invalidCode)
 
-        // Then
         val uiState = viewModel.uiState.first { it !is DetailUiState.Loading && it !is DetailUiState.Idle }
         assertTrue("El estado deberia ser Error", uiState is DetailUiState.Error)
         val errorMessage = (uiState as DetailUiState.Error).message

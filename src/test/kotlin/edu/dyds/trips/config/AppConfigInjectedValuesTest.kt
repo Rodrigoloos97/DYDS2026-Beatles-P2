@@ -14,11 +14,11 @@ class AppConfigInjectedValuesTest {
             tripsCacheFilePath = "tmp/test-trips.json"
         )
 
-        // Verifica que los valores inyectados son devueltos sin transformación (DIP)
         assertEquals("https://mock.restcountries.test/api", config.restCountriesBaseUrl)
         assertEquals("https://mock.open-meteo.test/v1/forecast", config.openMeteoBaseUrl)
         assertEquals("tmp/test-countries.json", config.countriesCacheFilePath)
         assertEquals("tmp/test-trips.json", config.tripsCacheFilePath)
     }
 }
+
 

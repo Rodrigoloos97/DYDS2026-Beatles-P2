@@ -7,10 +7,8 @@ class AppConfigFromEnvironmentTest {
 
     @Test
     fun `fromEnvironment returns default values when environment variables are not set`() {
-        // En un entorno de test limpio estas vars no están seteadas
         val config = AppConfigImpl.fromEnvironment()
 
-        // Si las vars de entorno no están definidas, deben usarse los defaults
         val expectedRestUrl = System.getenv("REST_COUNTRIES_BASE_URL") ?: "https://api.restcountries.com/countries/v5"
         val expectedMeteoUrl = System.getenv("OPEN_METEO_BASE_URL") ?: "https://api.open-meteo.com/v1/forecast"
         val expectedCountriesPath = System.getenv("COUNTRIES_CACHE_PATH") ?: "app_data/countries_cache.json"
@@ -22,4 +20,5 @@ class AppConfigFromEnvironmentTest {
         assertEquals(expectedTripsPath, config.tripsCacheFilePath)
     }
 }
+
 

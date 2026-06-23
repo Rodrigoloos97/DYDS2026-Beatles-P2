@@ -50,10 +50,8 @@ class TripsViewModelTest {
 
     @Test
     fun `loadTrips should emit Success with a list of trips`() = runTest {
-        // When
         viewModel.loadTrips()
 
-        // Then
         val uiState = viewModel.uiState.first { it !is TripsUiState.Loading }
         assertTrue("El estado deberia ser Success", uiState is TripsUiState.Success)
         val trips = (uiState as TripsUiState.Success).trips
@@ -63,13 +61,10 @@ class TripsViewModelTest {
 
     @Test
     fun `saveTrip should add a new trip and emit Success operation state`() = runTest {
-        // Given
         val newTrip = Trip(id = "trip-2", countryCode = "BR", countryName = "Brazil", startDate = "2026-08-01", endDate = "2026-08-10")
 
-        // When
         viewModel.saveTrip(newTrip)
 
-        // Then
         val operationState = viewModel.operationState.first { it is TripOperationUiState.Success || it is TripOperationUiState.Error }
         assertTrue("El estado de la operacion deberia ser Success", operationState is TripOperationUiState.Success)
 
@@ -81,13 +76,10 @@ class TripsViewModelTest {
 
     @Test
     fun `deleteTrip should remove a trip and emit Success operation state`() = runTest {
-        // Given
         val tripIdToDelete = initialTrip.id
 
-        // When
         viewModel.deleteTrip(tripIdToDelete)
 
-        // Then
         val operationState = viewModel.operationState.first { it is TripOperationUiState.Success || it is TripOperationUiState.Error }
         assertTrue("El estado de la operacion deberia ser Success", operationState is TripOperationUiState.Success)
 
@@ -98,13 +90,10 @@ class TripsViewModelTest {
 
     @Test
     fun `updateTrip should modify an existing trip`() = runTest {
-        // Given
         val updatedTrip = initialTrip.copy(notes = "Notas actualizadas")
 
-        // When
         viewModel.updateTrip(updatedTrip)
 
-        // Then
         val operationState = viewModel.operationState.first { it is TripOperationUiState.Success || it is TripOperationUiState.Error }
         assertTrue("El estado de la operacion deberia ser Success", operationState is TripOperationUiState.Success)
 

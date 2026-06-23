@@ -12,7 +12,6 @@ class CountryMapperTest {
 
     @Test
     fun `toDomain should map a full RemoteCountryDTO correctly`() {
-        // Given
         val remoteDto = RemoteCountryDTO(
             cca2 = "AR",
             name = RemoteCountryNameDTO(common = "Argentina", official = "Argentine Republic"),
@@ -27,10 +26,8 @@ class CountryMapperTest {
             population = 46000000
         )
 
-        // When
         val domainCountry = remoteDto.toDomain()
 
-        // Then
         assertEquals("AR", domainCountry.code)
         assertEquals("Argentina", domainCountry.name)
         assertEquals("Argentine Republic", domainCountry.officialName)
@@ -48,7 +45,6 @@ class CountryMapperTest {
 
     @Test
     fun `toDomain should handle nullable and empty fields gracefully`() {
-        // Given
         val remoteDto = RemoteCountryDTO(
             cca2 = "XX",
             name = RemoteCountryNameDTO(common = "Testland", official = "Republic of Test"),
@@ -63,10 +59,8 @@ class CountryMapperTest {
             population = 0
         )
 
-        // When
         val domainCountry = remoteDto.toDomain()
 
-        // Then
         assertEquals("XX", domainCountry.code)
         assertEquals("Testland", domainCountry.name)
         assertTrue(domainCountry.subregion == null)
@@ -76,13 +70,12 @@ class CountryMapperTest {
         assertTrue(domainCountry.timezones.isEmpty())
         assertEquals(0.0, domainCountry.latitude, 0.0)
         assertEquals(0.0, domainCountry.longitude, 0.0)
-        assertEquals("fallback.svg", domainCountry.flagUrl) // Checks fallback
+        assertEquals("fallback.svg", domainCountry.flagUrl)
         assertEquals(0, domainCountry.population)
     }
 
     @Test
     fun `toDomain should use svg flag when png is blank`() {
-        // Given
         val remoteDto = RemoteCountryDTO(
             cca2 = "AR",
             name = RemoteCountryNameDTO(common = "Argentina", official = "Argentine Republic"),
@@ -90,10 +83,8 @@ class CountryMapperTest {
             flags = RemoteFlagsDTO(png = "  ", svg = "flag.svg")
         )
 
-        // When
         val domainCountry = remoteDto.toDomain()
 
-        // Then
         assertEquals("flag.svg", domainCountry.flagUrl)
     }
 }

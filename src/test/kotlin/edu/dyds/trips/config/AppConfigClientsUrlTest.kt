@@ -43,7 +43,6 @@ class AppConfigClientsUrlTest {
 
         client.getCountries()
 
-        // Verifica que la URL capturada corresponde a la configurada en AppConfig
         assertEquals(customUrl, capturedUrl)
         File(config.countriesCacheFilePath).delete()
     }
@@ -70,11 +69,11 @@ class AppConfigClientsUrlTest {
 
         client.getForecast(-34.6, -58.4, "UTC")
 
-        // Verifica que la URL capturada corresponde a la configurada en AppConfig
         assertEquals(customUrl, capturedUrl)
     }
 
     private fun tempCacheFilePath(): String =
         "app_data/test-appconfig-cache-${UUID.randomUUID()}.json"
 }
+
 

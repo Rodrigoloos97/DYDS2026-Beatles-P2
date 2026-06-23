@@ -38,9 +38,6 @@ private data class TripListItem(val trip: Trip) {
     override fun toString(): String = trip.countryName
 }
 
-// ══════════════════════════════════════════════════════════════════════════════
-//  T H E M E
-// ══════════════════════════════════════════════════════════════════════════════
 private object T {
     val BG          = Color(8,  12,  22)
     val BG_CARD     = Color(14, 21,  36)
@@ -93,10 +90,6 @@ private object T {
         else        -> "?"
     }
 }
-
-// ══════════════════════════════════════════════════════════════════════════════
-//  C U S T O M   C O M P O N E N T S
-// ══════════════════════════════════════════════════════════════════════════════
 
 private open class RPanel(
     private val bg: Color = T.BG_CARD,
@@ -353,10 +346,6 @@ private class TripRenderer : ListCellRenderer<TripListItem> {
     }
 }
 
-// ══════════════════════════════════════════════════════════════════════════════
-//  M A I N   W I N D O W
-// ══════════════════════════════════════════════════════════════════════════════
-
 fun createAndShowAppWindow(
     scope: CoroutineScope,
     homeViewModel: HomeViewModel,
@@ -368,7 +357,6 @@ fun createAndShowAppWindow(
     UIManager.put("OptionPane.background",        T.BG_CARD)
     UIManager.put("OptionPane.messageForeground", T.TEXT)
     UIManager.put("Panel.background",             T.BG_CARD)
-    // Keep global LAF defaults for regular buttons/inputs to avoid unreadable text in system dialogs.
 
     val frame = JFrame("WorldGlance")
     frame.defaultCloseOperation = JFrame.DISPOSE_ON_CLOSE
@@ -442,10 +430,6 @@ fun createAndShowAppWindow(
     frame.isVisible = true
 }
 
-// ══════════════════════════════════════════════════════════════════════════════
-//  N A V   B A R
-// ══════════════════════════════════════════════════════════════════════════════
-
 private fun buildNavBar(homeBtn: NavBtn, tripsBtn: NavBtn): JPanel {
     val bar = GPanel(T.BG_NAV, Color(10, 18, 34), radius = 0)
     bar.layout = BorderLayout()
@@ -469,10 +453,6 @@ private fun buildNavBar(homeBtn: NavBtn, tripsBtn: NavBtn): JPanel {
     bar.add(logoWrap, BorderLayout.WEST); bar.add(navWrap, BorderLayout.EAST)
     return bar
 }
-
-// ══════════════════════════════════════════════════════════════════════════════
-//  H O M E   P A N E L
-// ══════════════════════════════════════════════════════════════════════════════
 
 private fun configureHomePanel(
     panel: JPanel, scope: CoroutineScope, viewModel: HomeViewModel,
@@ -556,10 +536,6 @@ private fun configureHomePanel(
     viewModel.loadCountries()
 }
 
-// ══════════════════════════════════════════════════════════════════════════════
-//  D E T A I L   P A N E L
-// ══════════════════════════════════════════════════════════════════════════════
-
 private fun configureDetailPanel(
     panel: JPanel, scope: CoroutineScope, countryCode: String,
     detailViewModel: DetailViewModel,
@@ -570,7 +546,6 @@ private fun configureDetailPanel(
 ) {
     panel.removeAll()
 
-    // Hero
     val hero = GPanel(Color(8, 26, 48), Color(6, 18, 36), radius = 0, horizontal = false)
     hero.layout = BorderLayout(20, 8); hero.preferredSize = Dimension(0, 110)
     hero.border = EmptyBorder(18, 28, 18, 28)
@@ -584,13 +559,11 @@ private fun configureDetailPanel(
     heroTxt.add(countryNameL); heroTxt.add(Box.createVerticalStrut(4)); heroTxt.add(countrySubL)
     hero.add(flagL, BorderLayout.WEST); hero.add(heroTxt, BorderLayout.CENTER)
 
-    // Split
     val split = JSplitPane(JSplitPane.HORIZONTAL_SPLIT).also {
         it.isOpaque = false; it.background = T.BG; it.dividerSize = 1
         it.isContinuousLayout = true; it.resizeWeight = 0.38; it.border = null
     }
 
-    // Left: info
     val infoOuter = JPanel(BorderLayout()).also { it.isOpaque = false; it.background = T.BG; it.border = EmptyBorder(20, 24, 20, 12) }
     val infoTitleL = lbl("\uD83D\uDCCB  Información del País", T.F_H2, T.CYAN)
     infoTitleL.border = EmptyBorder(0, 0, 14, 0)
@@ -598,7 +571,6 @@ private fun configureDetailPanel(
     infoOuter.add(infoTitleL, BorderLayout.NORTH)
     infoOuter.add(styledScroll(infoRows).also { it.border = null }, BorderLayout.CENTER)
 
-    // Right: forecast
     val fxOuter = JPanel(BorderLayout()).also { it.isOpaque = false; it.background = T.BG; it.border = EmptyBorder(20, 12, 20, 24) }
     val fxTitleL = lbl("\uD83C\uDF24  Pronóstico del Tiempo \u2014 7 días", T.F_H2, T.CYAN)
     fxTitleL.border = EmptyBorder(0, 0, 14, 0)
@@ -608,7 +580,6 @@ private fun configureDetailPanel(
 
     split.leftComponent = infoOuter; split.rightComponent = fxOuter
 
-    // Bottom
     val actBar = JPanel(FlowLayout(FlowLayout.RIGHT, 12, 12)).also {
         it.isOpaque = false; it.border = MatteBorder(1, 0, 0, 0, T.BORDER)
     }
@@ -686,7 +657,6 @@ private fun bindDetail(
     fxCards: JPanel
 ) {
     val c = detail.country
-    // Hero
     flagL.text = countryCodeToFlag(c.code)
     countryNameL.text = "${c.name}  (${c.code})"
     countryNameL.foreground = T.TEXT
@@ -697,7 +667,6 @@ private fun bindDetail(
     }
     countrySubL.text = sub
 
-    // Info rows
     infoRows.removeAll()
     fun addRow(icon: String, label: String, value: String) {
         val row = JPanel(BorderLayout(8, 0)).apply { isOpaque = false; border = EmptyBorder(4, 0, 4, 0) }
@@ -717,7 +686,6 @@ private fun bindDetail(
     addRow("📍", "Coordenadas", "%.4f, %.4f".format(c.latitude, c.longitude))
     infoRows.revalidate(); infoRows.repaint()
 
-    // Forecast cards
     fxCards.removeAll()
     if (detail.weatherForecast.isEmpty()) {
         fxCards.add(lbl("Sin pronóstico disponible", T.F_BODY, T.TEXT_MUTED))
@@ -743,10 +711,6 @@ private fun bindDetail(
     }
     fxCards.revalidate(); fxCards.repaint()
 }
-
-// ══════════════════════════════════════════════════════════════════════════════
-//  T R I P S   P A N E L
-// ══════════════════════════════════════════════════════════════════════════════
 
 private fun configureTripsPanel(
     panel: JPanel, scope: CoroutineScope, viewModel: TripsViewModel
@@ -880,9 +844,6 @@ private fun configureTripsPanel(
     viewModel.loadTrips()
 }
 
-// ══════════════════════════════════════════════════════════════════════════════
-//  H E L P E R S
-// ══════════════════════════════════════════════════════════════════════════════
 
 private fun showRoute(cards: JPanel, route: String) { (cards.layout as CardLayout).show(cards, route) }
 
