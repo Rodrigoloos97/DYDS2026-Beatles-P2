@@ -1,1 +1,22 @@
-{}
+{
+    "trips": [
+        {
+            "id": "829ae089-27a3-401a-8627-24623a64ebb7",
+            "countryCode": "AF",
+            "countryName": "Afghanistan",
+            "startDate": "2026-06-30",
+            "endDate": "2026-07-04",
+            "notes": "viaje de prueba",
+            "createdAt": 1782308660711
+        },
+        {
+            "id": "c0812f1b-41f2-4acb-b17e-acb1b358e779",
+            "countryCode": "AD",
+            "countryName": "Andorra",
+            "startDate": "2026-07-14",
+            "endDate": "2026-07-29",
+            "notes": "un viaje a Andorra",
+            "createdAt": 1782308893910
+        }
+    ]
+}

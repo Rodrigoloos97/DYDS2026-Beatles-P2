@@ -67,6 +67,15 @@ private object T {
     val F_TINY  = Font("Segoe UI", Font.PLAIN, 10)
     val F_FLAG  = Font("Segoe UI Emoji", Font.PLAIN, 42)
 
+    private fun hasExtendedGlyphs(text: String): Boolean =
+        text.codePoints().anyMatch { cp -> cp > 0xFFFF || cp in 0x2190..0x2BFF }
+
+    fun withGlyphFallback(text: String, base: Font): Font {
+        if (!hasExtendedGlyphs(text)) return base
+        // Use logical composite font so JVM can fall back to available system glyph fonts.
+        return if (base.family.equals("Segoe UI", ignoreCase = true)) Font("Dialog", base.style, base.size) else base
+    }
+
     fun regionColor(r: String): Color = when (r.trim().lowercase()) {
         "europe"    -> Color(99,  102, 241)
         "asia"      -> Color(239, 68,  68)
@@ -159,7 +168,7 @@ private class WBtn(
 
     init {
         isOpaque = false; isFocusPainted = false; isBorderPainted = false; isContentAreaFilled = false
-        foreground = fgNorm; font = T.F_H3; cursor = Cursor(Cursor.HAND_CURSOR)
+        foreground = fgNorm; font = T.withGlyphFallback(text, T.F_H3); cursor = Cursor(Cursor.HAND_CURSOR)
         border = EmptyBorder(9, 18, 9, 18)
         addMouseListener(object : MouseAdapter() {
             override fun mouseEntered(e: MouseEvent) { hovered = true;  repaint() }
@@ -188,7 +197,7 @@ private class NavBtn(text: String) : JButton(text) {
 
     init {
         isOpaque = false; isFocusPainted = false; isBorderPainted = false; isContentAreaFilled = false
-        foreground = T.TEXT_SEC; font = T.F_H3; cursor = Cursor(Cursor.HAND_CURSOR)
+        foreground = T.TEXT_SEC; font = T.withGlyphFallback(text, T.F_H3); cursor = Cursor(Cursor.HAND_CURSOR)
         border = EmptyBorder(10, 20, 10, 20)
         addMouseListener(object : MouseAdapter() {
             override fun mouseEntered(e: MouseEvent) { hovered = true;  repaint() }
@@ -326,9 +335,9 @@ private class TripRenderer : ListCellRenderer<TripListItem> {
         }
         panel.isOpaque = false
         panel.border = EmptyBorder(14, 22, 14, 22)
-        panel.preferredSize = Dimension(0, 80)
+        panel.preferredSize = Dimension(0, if (notes.isBlank()) 80 else 108)
 
-        val planeL = lbl("\u2708", Font("Segoe UI", Font.PLAIN, 28), if (isSelected) T.CYAN else T.PURPLE)
+        val planeL = lbl("\u2708", Font("Segoe UI Emoji", Font.PLAIN, 28), if (isSelected) T.CYAN else T.PURPLE)
         planeL.border = EmptyBorder(0, 0, 0, 8)
         planeL.verticalAlignment = SwingConstants.CENTER
 
@@ -338,7 +347,11 @@ private class TripRenderer : ListCellRenderer<TripListItem> {
         content.add(lbl("\uD83D\uDCC5  $start   \u2192   $end", T.F_BODY, T.TEXT_SEC))
         if (notes.isNotBlank()) {
             content.add(Box.createVerticalStrut(3))
-            content.add(lbl("\uD83D\uDCDD  $notes", T.F_SMALL, T.TEXT_MUTED))
+            val wrapWidth = (list.width - 180).coerceAtLeast(220)
+            val notesL = JLabel("<html><div style='width:${wrapWidth}px;'>\uD83D\uDCDD  ${escapeHtml(notes)}</div></html>")
+            notesL.font = T.F_SMALL
+            notesL.foreground = T.TEXT_MUTED
+            content.add(notesL)
         }
 
         panel.add(planeL, BorderLayout.WEST); panel.add(content, BorderLayout.CENTER)
@@ -696,7 +709,7 @@ private fun bindDetail(
             card.border = EmptyBorder(8, 12, 8, 12)
             card.maximumSize = Dimension(Int.MAX_VALUE, 52)
             val icon = T.weatherIcon(day.weatherCode)
-            val iconL = lbl(icon, T.F_H2, T.CYAN)
+            val iconL = lbl(icon, Font("Segoe UI Emoji", Font.PLAIN, T.F_H2.size), T.CYAN)
             iconL.preferredSize = Dimension(36, iconL.preferredSize.height)
             val dateL = lbl(day.date, T.F_BODY, T.TEXT_SEC)
             dateL.preferredSize = Dimension(110, dateL.preferredSize.height)
@@ -871,7 +884,7 @@ private fun showMessageDialog(parent: Component, title: String, message: String,
 
     val icon = if (isError) "\u26A0" else "\u2728"
     val header = JPanel(FlowLayout(FlowLayout.LEFT, 8, 0)).also { it.isOpaque = false }
-    header.add(lbl(icon, Font("Segoe UI", Font.PLAIN, 18), if (isError) T.RED else T.CYAN))
+    header.add(lbl(icon, Font("Segoe UI Emoji", Font.PLAIN, 18), if (isError) T.RED else T.CYAN))
     header.add(lbl(title, T.F_H2, T.TEXT))
 
     val body = JLabel("<html><div style='width:280px;'>$message</div></html>").also {
@@ -907,7 +920,7 @@ private fun showConfirmDeleteDialog(parent: Component): Boolean {
     shell.border = EmptyBorder(16, 18, 16, 18)
 
     val header = JPanel(FlowLayout(FlowLayout.LEFT, 8, 0)).also { it.isOpaque = false }
-    header.add(lbl("\u2753", Font("Segoe UI", Font.PLAIN, 18), T.AMBER))
+    header.add(lbl("\u2753", Font("Segoe UI Emoji", Font.PLAIN, 18), T.AMBER))
     header.add(lbl(title, T.F_H2, T.TEXT))
 
     val body = JLabel("<html><div style='width:320px;'>$message</div></html>").also {
@@ -950,7 +963,7 @@ private fun showTextInputDialog(parent: Component, title: String, prompt: String
     shell.border = EmptyBorder(16, 18, 16, 18)
 
     val header = JPanel(FlowLayout(FlowLayout.LEFT, 8, 0)).also { it.isOpaque = false }
-    header.add(lbl("\u270D", Font("Segoe UI", Font.PLAIN, 17), T.CYAN))
+    header.add(lbl("\u270D", Font("Segoe UI Emoji", Font.PLAIN, 17), T.CYAN))
     header.add(lbl(title, T.F_H2, T.TEXT))
 
     val promptLabel = lbl(prompt, T.F_BODY, T.TEXT_SEC)
@@ -994,7 +1007,23 @@ private fun showTextInputDialog(parent: Component, title: String, prompt: String
     return result
 }
 
-private fun lbl(text: String, font: Font, color: Color) = JLabel(text).also { it.font = font; it.foreground = color }
+private fun lbl(text: String, font: Font, color: Color) = JLabel(text).also {
+    it.font = T.withGlyphFallback(text, font)
+    it.foreground = color
+}
+
+private fun escapeHtml(text: String): String = buildString(text.length) {
+    text.forEach { ch ->
+        when (ch) {
+            '&' -> append("&amp;")
+            '<' -> append("&lt;")
+            '>' -> append("&gt;")
+            '"' -> append("&quot;")
+            '\'' -> append("&#39;")
+            else -> append(ch)
+        }
+    }
+}
 
 private fun styledScroll(view: Component): JScrollPane = JScrollPane(view).apply {
     border = null; background = T.BG; viewport.background = T.BG
